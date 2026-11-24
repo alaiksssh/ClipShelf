@@ -1,0 +1,137 @@
+// Games offered when choosing the game of a clip, for when it could not be found by itself.
+export const OTHER = 'Other';
+
+export const GAMES = [
+  'Valorant', 'Counter-Strike 2', 'League of Legends', 'Fortnite', 'Apex Legends', 'Overwatch 2', 'Rainbow Six Siege',
+  'Call of Duty: Warzone', 'Call of Duty: Black Ops 6', 'Call of Duty: Modern Warfare III', 'Marvel Rivals', 'Deadlock',
+  'The Finals', 'Escape from Tarkov', 'PUBG: Battlegrounds', 'Rocket League', 'Minecraft', 'Roblox', 'GTA V',
+  'Grand Theft Auto VI', 'Red Dead Redemption 2', 'Dota 2', 'Team Fortress 2', 'Rust', 'DayZ', 'ARK: Survival Ascended',
+  'Palworld', 'Lethal Company', 'R.E.P.O.', 'Phasmophobia', 'Among Us', 'Fall Guys', 'Dead by Daylight',
+  'Destiny 2', 'Warframe', 'Battlefield 2042', 'Battlefield 6', 'Hunt: Showdown 1896', 'Helldivers 2', 'Delta Force',
+  'XDefiant', 'Splitgate 2', 'Halo Infinite', 'Paladins', 'Smite 2', 'Brawlhalla', 'Brawl Stars', 'Clash Royale',
+  'Genshin Impact', 'Honkai: Star Rail', 'Zenless Zone Zero', 'Wuthering Waves', 'Elden Ring', 'Elden Ring Nightreign',
+  'Dark Souls III', 'Sekiro: Shadows Die Twice', 'Lies of P', 'Black Myth: Wukong', 'Phantom Blade Zero',
+  'Monster Hunter Wilds', 'Monster Hunter: World', 'Baldur’s Gate 3', 'Cyberpunk 2077', 'The Witcher 3: Wild Hunt',
+  'Assassin’s Creed Shadows', 'Assassin’s Creed Valhalla', 'Assassin’s Creed Mirage', 'Ghost of Tsushima',
+  'Ghost of Yōtei', 'God of War Ragnarök', 'Marvel’s Spider-Man 2', 'Hogwarts Legacy', 'Starfield', 'Skyrim',
+  'Fallout 4', 'Fallout 76', 'No Man’s Sky', 'Sea of Thieves', 'Valheim', 'Terraria', 'Stardew Valley', 'Hades II',
+  'Hollow Knight', 'Hollow Knight: Silksong', 'Celeste', 'Cuphead', 'Blasphemous', 'Geometry Dash', 'Osu!',
+  'Trackmania', 'Forza Horizon 5', 'Forza Motorsport', 'Gran Turismo 7', 'F1 25', 'EA Sports FC 25', 'EA Sports FC 26',
+  'NBA 2K25', 'Madden NFL 25', 'Street Fighter 6', 'Tekken 8', 'Mortal Kombat 1', 'Super Smash Bros. Ultimate',
+  '2XKO', 'Teamfight Tactics', 'Hearthstone', 'Legends of Runeterra', 'World of Warcraft', 'Final Fantasy XIV',
+  'Final Fantasy VII Rebirth', 'Lost Ark', 'Path of Exile 2', 'Diablo IV', 'The Elder Scrolls Online', 'Throne and Liberty',
+  'Black Desert', 'Guild Wars 2', 'Albion Online', 'RuneScape', 'Old School RuneScape', 'MapleStory',
+  'Garry’s Mod', 'Portal 2', 'Half-Life: Alyx', 'Left 4 Dead 2', 'Deep Rock Galactic', 'Risk of Rain 2',
+  'Content Warning', 'Peak', 'Schedule I', 'Supermarket Simulator', 'Euro Truck Simulator 2', 'Microsoft Flight Simulator 2024',
+  'The Sims 4', 'Cities: Skylines II', 'Satisfactory', 'Factorio', 'Subnautica', 'Raft', 'The Forest', 'Sons of the Forest',
+  'Grounded', 'Slime Rancher', 'It Takes Two', 'Split Fiction', 'A Way Out', 'Resident Evil 4', 'Resident Evil Village',
+  'Silent Hill 2', 'Silent Hill f', 'Alan Wake 2', 'Dead Space', 'The Last of Us Part I', 'Uncharted 4',
+  'Horizon Forbidden West', 'Death Stranding', 'Metal Gear Solid Delta', 'Crimson Desert', 'Kingdom Come: Deliverance II',
+  'Clair Obscur: Expedition 33', 'Stellar Blade', 'Doom: The Dark Ages', 'Doom Eternal', 'Ultrakill', 'STRAFTAT',
+  'Krunker', 'Aimlabs', 'KovaaK’s', 'GeoGuessr', 'Chess', 'FragPunk', 'Spectre Divide', 'Strinova', 'Bloodstrike',
+  'Mobile Legends', 'Free Fire', 'PUBG Mobile', 'Clash of Clans', 'Pokémon Scarlet et Violet', 'Pokémon Legends: Z-A',
+  'Mario Kart 8 Deluxe', 'Mario Kart World', 'The Legend of Zelda: Tears of the Kingdom', 'Animal Crossing', 'Splatoon 3',
+  // Shooters and multiplayer games.
+  'Dying Light', 'Dying Light 2 Stay Human', 'Dying Light: The Beast', 'Back 4 Blood', 'World War Z', 'Payday 2',
+  'Payday 3', 'Ready or Not', 'Insurgency: Sandstorm', 'Squad', 'Hell Let Loose', 'Arma 3', 'Arma Reforger',
+  'Battlefield 1', 'Battlefield V', 'Battlefield 4', 'BattleBit Remastered', 'Call of Duty: Black Ops 7',
+  'Call of Duty: Black Ops III', 'Call of Duty: Modern Warfare II', 'Counter-Strike: Global Offensive', 'Titanfall 2',
+  'Arc Raiders', 'Marathon', 'Gray Zone Warfare', 'Arena Breakout: Infinite', 'Bodycam', 'Splitgate', 'Quake Champions',
+  'Chivalry 2', 'Mordhau', 'For Honor', 'War Thunder', 'World of Tanks', 'World of Warships', 'Enlisted',
+  'PlanetSide 2', 'Warhammer 40,000: Space Marine 2', 'Warhammer 40,000: Darktide', 'Warhammer: Vermintide 2',
+  'Killing Floor 2', 'Killing Floor 3', 'Naraka: Bladepoint', 'Predecessor', 'Supervive', 'Mecha Break', 'Rematch',
+  'Wildgate', 'Once Human', 'Dune: Awakening', 'Where Winds Meet', 'The First Descendant', 'Heroes of the Storm',
+  'Pokémon Unite', 'MultiVersus', 'Stumble Guys', 'Party Animals', 'Bopl Battle', 'Rivals of Aether', 'Rivals 2',
+  'Guilty Gear -Strive-', 'Dragon Ball FighterZ', 'Dragon Ball: Sparking! Zero', 'Fatal Fury: City of the Wolves',
+  'Granblue Fantasy Versus: Rising', 'Tekken 7', 'Mortal Kombat 11',
+  // Co-op, party and horror with friends.
+  'MECCHA CHAMELEON', 'Goose Goose Duck', 'Buckshot Roulette', 'Liar’s Bar', 'Lockdown Protocol', 'Mage Arena',
+  'Chained Together', 'Only Up!', 'Getting Over It with Bennett Foddy', 'Jump King', 'A Difficult Game About Climbing',
+  'Webfishing', 'Gang Beasts', 'Human: Fall Flat', 'Totally Accurate Battle Simulator', 'Ultimate Chicken Horse',
+  'Pummel Party', 'Golf With Your Friends', 'Golf It!', 'Stick Fight: The Game', 'Nidhogg 2', 'Lethal League Blaze',
+  'Overcooked! 2', 'PlateUp!', 'Moving Out', 'Unrailed!', 'Bread & Fred', 'We Were Here',
+  'Keep Talking and Nobody Explodes', 'Castle Crashers', 'Witch It', 'Escape Simulator', 'Escape the Backrooms',
+  'Inside the Backrooms', 'Supermarket Together', 'Dale & Dawson Stationery Supplies', 'Mycopunk', 'Escape from Duckov',
+  'Megabonk', 'Lost Skies', 'Devour', 'Pacify', 'The Outlast Trials', 'Outlast', 'Outlast 2', 'Demonologist',
+  'Ghost Watchers', 'Labyrinthine', 'Poppy Playtime', 'Project Playtime', 'Five Nights at Freddy’s',
+  'Five Nights at Freddy’s: Security Breach', 'Fears to Fathom', 'The Texas Chain Saw Massacre', 'Evil Dead: The Game',
+  'Friday the 13th: The Game', 'Killer Klowns from Outer Space: The Game',
+  // Survival, building and simulation.
+  'Project Zomboid', '7 Days to Die', 'Unturned', 'SCUM', 'Conan Exiles', 'V Rising', 'Enshrouded', 'Core Keeper',
+  'Abiotic Factor', 'Icarus', 'Soulmask', 'Smalland', 'Grounded 2', 'The Long Dark', 'Green Hell', 'Stranded Deep',
+  'Don’t Starve Together', 'Necesse', 'Starbound', 'Hytale', 'Vintage Story', 'The Planet Crafter', 'Astroneer',
+  'Pacific Drive', 'Space Engineers', 'Kerbal Space Program', 'Stormworks: Build and Rescue', 'Scrap Mechanic',
+  'Besiege', 'Teardown', 'People Playground', 'Medieval Dynasty', 'Manor Lords', 'RimWorld', 'Oxygen Not Included',
+  'Dyson Sphere Program', 'Timberborn', 'Frostpunk 2', 'Against the Storm', 'Kenshi', 'Mount & Blade II: Bannerlord',
+  'TCG Card Shop Simulator', 'House Flipper 2', 'PowerWash Simulator', 'Gas Station Simulator',
+  'Car Mechanic Simulator 2021', 'My Summer Car', 'My Winter Car', 'Drive Beyond Horizons', 'BeamNG.drive',
+  'American Truck Simulator', 'SnowRunner', 'Farming Simulator 25', 'Planet Zoo', 'Planet Coaster 2',
+  'Two Point Hospital', 'Jurassic World Evolution 3', 'Cities: Skylines', 'Tabletop Simulator', 'Bongo Cat',
+  // Strategy.
+  'Stellaris', 'Hearts of Iron IV', 'Europa Universalis IV', 'Europa Universalis V', 'Crusader Kings III',
+  'Sid Meier’s Civilization VI', 'Sid Meier’s Civilization VII', 'Age of Empires II: Definitive Edition',
+  'Age of Empires IV', 'Age of Mythology: Retold', 'StarCraft II', 'Company of Heroes 3', 'Total War: Warhammer III',
+  'XCOM 2', 'Football Manager 2024', 'Bloons TD 6', 'Plants vs. Zombies',
+  // Racing and sports.
+  'Forza Horizon 4', 'The Crew Motorfest', 'Need for Speed Unbound', 'Need for Speed Heat',
+  'Need for Speed: Most Wanted', 'Wreckfest', 'Wreckfest 2', 'Assetto Corsa', 'Assetto Corsa Competizione',
+  'Assetto Corsa EVO', 'iRacing', 'F1 24', 'WRC', 'MotoGP 25', 'EA Sports FC 24', 'eFootball', 'NBA 2K26',
+  'Madden NFL 26', 'PGA Tour 2K25', 'skate.', 'Session: Skate Sim', 'Tony Hawk’s Pro Skater 3 + 4', 'Riders Republic',
+  'Steep',
+  // Action, adventure and role-playing.
+  'Red Dead Redemption', 'Grand Theft Auto IV', 'Grand Theft Auto: San Andreas', 'Mafia: The Old Country',
+  'Mafia: Definitive Edition', 'Watch Dogs 2', 'Watch Dogs: Legion', 'Far Cry 3', 'Far Cry 5', 'Far Cry 6',
+  'Tom Clancy’s The Division 2', 'Ghost Recon Breakpoint', 'Assassin’s Creed Black Flag Resynced',
+  'Assassin’s Creed Odyssey', 'Assassin’s Creed Origins', 'Assassin’s Creed Unity', 'Prince of Persia: The Lost Crown',
+  'Star Wars Jedi: Survivor', 'Star Wars Outlaws', 'Star Wars Battlefront II', 'Mass Effect Legendary Edition',
+  'Dragon Age: The Veilguard', 'Dragon’s Dogma 2', 'Devil May Cry 5', 'Resident Evil 2', 'Resident Evil 3',
+  'Resident Evil 7', 'Resident Evil Requiem', 'Monster Hunter Rise', 'Dead Island 2', 'The Callisto Protocol',
+  'Atomic Heart', 'Hi-Fi Rush', 'Control', 'Alan Wake', 'Metro Exodus', 'S.T.A.L.K.E.R. 2: Heart of Chornobyl',
+  'BioShock Infinite', 'Borderlands 3', 'Borderlands 4', 'Tiny Tina’s Wonderlands', 'Wolfenstein II: The New Colossus',
+  'Indiana Jones and the Great Circle', 'Prey', 'Dishonored 2', 'Deathloop', 'Hitman: World of Assassination',
+  'Detroit: Become Human', 'Until Dawn', 'The Quarry', 'Life is Strange', 'A Plague Tale: Requiem',
+  'Senua’s Saga: Hellblade II', 'Days Gone', 'Marvel’s Spider-Man Remastered', 'Marvel’s Spider-Man: Miles Morales',
+  'God of War', 'Horizon Zero Dawn', 'Ratchet & Clank: Rift Apart', 'Returnal', 'Final Fantasy XVI',
+  'Final Fantasy VII Remake', 'Persona 5 Royal', 'Persona 3 Reload', 'Metaphor: ReFantazio', 'NieR:Automata',
+  'Like a Dragon: Infinite Wealth', 'Yakuza: Like a Dragon', 'Tales of Arise', 'Octopath Traveler II', 'Dark Souls',
+  'Dark Souls II', 'Armored Core VI: Fires of Rubicon', 'Nioh 2', 'Wo Long: Fallen Dynasty',
+  'The First Berserker: Khazan', 'Lords of the Fallen', 'Mortal Shell', 'Wuchang: Fallen Feathers', 'Ghostrunner',
+  'Ghostrunner 2', 'Mirror’s Edge Catalyst', 'Batman: Arkham Knight', 'Middle-earth: Shadow of War', 'Sleeping Dogs',
+  'Just Cause 3', 'Avowed', 'The Outer Worlds 2', 'Kingdom Come: Deliverance', 'Ninja Gaiden 4', 'Hell is Us',
+  'Atomfall', 'The Elder Scrolls IV: Oblivion Remastered', 'Fallout: New Vegas', 'Fallout 3', 'Alien: Isolation',
+  'Amnesia: The Bunker', 'Little Nightmares II', 'Little Nightmares III', 'Minecraft Dungeons', 'Rayman Legends',
+  'Valiant Hearts', 'Dispatch', 'Diablo II: Resurrected', 'Path of Exile', 'Last Epoch', 'Grim Dawn',
+  'Torchlight Infinite', 'Titan Quest II', 'New World: Aeternum', 'Star Citizen', 'EVE Online', 'Elite Dangerous',
+  'Dofus', 'Wakfu', 'Honkai Impact 3rd', 'Infinity Nikki', 'Tower of Fantasy', 'Arknights: Endfield',
+  'Duet Night Abyss', 'Umamusume: Pretty Derby', 'Limbus Company', 'Blue Archive',
+  // Indie games.
+  'Hades', 'Dead Cells', 'The Binding of Isaac: Rebirth', 'Enter the Gungeon', 'Slay the Spire', 'Slay the Spire 2',
+  'Balatro', 'Vampire Survivors', 'Brotato', 'Halls of Torment', 'Ball x Pit', 'Spelunky 2', 'Noita',
+  'Risk of Rain Returns', 'Hotline Miami', 'Hotline Miami 2: Wrong Number', 'Katana Zero', 'Shovel Knight',
+  'Ori and the Blind Forest', 'Ori and the Will of the Wisps', 'Hyper Light Drifter', 'Tunic', 'Outer Wilds',
+  'Animal Well', 'Nine Sols', 'Blue Prince', 'Neon White', 'Sifu', 'Sea of Stars', 'Chained Echoes', 'Dave the Diver',
+  'Dredge', 'Inscryption', 'Pizza Tower', 'Undertale', 'Deltarune', 'Omori', 'Cult of the Lamb', 'Blasphemous 2',
+  'Haste', 'Pseudoregalia', 'Lunacid', 'Dome Keeper', 'Deep Rock Galactic: Survivor', 'Gunfire Reborn', 'Roboquest',
+  'Dusk', 'Turbo Overkill', 'Mullet Madjack', 'Severed Steel', 'Trepang2', 'Warhammer 40,000: Boltgun', 'Cruelty Squad',
+  'Ravenswatch', 'Absolum', 'Keeper', 'Kingdom Two Crowns', 'Superhot', 'Superliminal',
+  'The Stanley Parable: Ultra Deluxe', 'Portal', 'The Witness', 'Baba Is You', 'Return of the Obra Dinn',
+  'Papers, Please', 'Firewatch', 'What Remains of Edith Finch', 'Inside', 'Limbo', 'Cocoon', 'Unpacking',
+  'A Short Hike', 'Iron Lung', 'Mouthwashing', 'Signalis', 'Beat Saber', 'Friday Night Funkin’', 'Muse Dash', 'Thumper',
+  'Poly Bridge 3', 'Hardspace: Shipbreaker', 'Lethal League',
+  // Played on a console or in an emulator.
+  'The Legend of Zelda: Breath of the Wild', 'Super Mario Odyssey',
+  OTHER,
+];
+
+/** Names to pick from: those of the library first, then the list, without two spellings of one game. */
+export function gameChoices(known) {
+  const seen = new Set();
+  const choices = [];
+  for (const name of [...known, ...GAMES]) {
+    const key = name.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]/gu, '');
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    choices.push(name);
+  }
+  return choices;
+}

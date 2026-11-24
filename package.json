@@ -1,0 +1,70 @@
+{
+  "name": "clipshelf",
+  "productName": "ClipShelf",
+  "version": "1.13.0",
+  "private": true,
+  "description": "Library and editor for local clips",
+  "author": "ClipShelf",
+  "license": "UNLICENSED",
+  "main": "src/main/main.js",
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "ffmpeg-ffprobe-static": "^6.1.2-rc.1",
+    "playwright-core": "^1.65.1"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.*",
+    "dist": "electron-builder --win nsis --publish never"
+  },
+  "build": {
+    "appId": "local.clipshelf.app",
+    "productName": "ClipShelf",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/ffmpeg-ffprobe-static",
+        "to": "bin",
+        "filter": [
+          "ffmpeg.exe",
+          "ffprobe.exe",
+          "ffmpeg.exe.LICENSE"
+        ]
+      }
+    ],
+    "electronLanguages": [
+      "fr",
+      "en-US"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "alaiksssh",
+        "repo": "ClipShelf",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "ClipShelf-Setup-${version}.exe",
+      "shortcutName": "ClipShelf"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

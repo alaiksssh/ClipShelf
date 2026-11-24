@@ -1,0 +1,32 @@
+body { overflow-y: auto; }
+
+.shortcuts-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 18px;
+  background: var(--bg);
+}
+
+.shortcuts-head img { width: 20px; height: 20px; }
+.shortcuts-head h1 { margin: 0; font-size: 14px; font-weight: 700; }
+
+#shortcuts {
+  display: grid;
+  gap: 12px;
+  padding: 4px 16px 18px;
+}
+
+#shortcuts section {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+#shortcuts .caption { margin: 0 0 12px; }
+#shortcuts .keys { margin: 0; }

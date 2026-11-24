@@ -1,0 +1,679 @@
+#editor {
+  --head: 236px; /* Keep in sync with HEAD in timeline.js. */
+  display: grid;
+  grid-template: var(--bar) minmax(110px, 1fr) auto / minmax(0, 1fr);
+}
+
+.editor-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 var(--controls) 0 10px;
+}
+
+.editor-bar h1 {
+  margin: 0 10px 0 6px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-bar .info {
+  overflow: hidden;
+  color: var(--dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-bar .spacer { flex: 1; }
+.editor-bar .primary { margin: 0 6px 0 2px; }
+.editor-bar .overwrite { margin-left: 6px; }
+.editor-bar .btn { flex-shrink: 0; }
+
+.stage {
+  position: relative;
+  min-height: 0;
+  margin: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #000;
+  overflow: hidden;
+}
+
+.stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  visibility: hidden;
+}
+
+.stage video.shown { visibility: visible; }
+
+.crop {
+  position: absolute;
+  z-index: 1;
+  outline: 2000px solid #0d0f14c4;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  cursor: move;
+}
+
+.stage-message {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: #0d0f14d9;
+}
+
+/* Tools and timeline share one card. */
+.panel {
+  min-width: 0;
+  margin: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 8px 5px;
+}
+
+.tools .spacer { flex: 1; }
+.tools .btn.square { width: 32px; }
+
+.tools .sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 6px;
+  background: var(--border);
+}
+
+.tools .play {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.tools .play .icon { width: 17px; height: 17px; }
+
+.clock {
+  min-width: 128px;
+  padding: 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock small {
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-button);
+  background: var(--bg);
+}
+
+.segmented .btn { height: 30px; }
+.segmented .btn.active { background: var(--hover); }
+
+/* The blade that cuts one track. */
+.segmented .btn.single { position: relative; }
+
+.segmented .btn.single::after {
+  content: "1";
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 8px 4px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.context {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.context b {
+  margin-right: 4px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.options .btn,
+.options .field { height: 28px; color: var(--text); }
+.options .btn.danger { color: var(--low); }
+.options .ratio { min-width: 136px; }
+.options .audio-style { min-width: 132px; }
+.options .speed { min-width: 106px; }
+
+/* What was deleted can come back from here. */
+.tools .removed {
+  height: 30px;
+  margin-left: 6px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.tools .removed:hover:not(:disabled),
+.tools .removed[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+
+.tools .removed .count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.options .master { width: 80px; flex: none; }
+
+/* The volume of the selected pieces of sound, or of the selected passage. */
+.context .volume-control {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin: 0 2px;
+  color: var(--dim);
+}
+
+.context .volume-control .icon { width: 16px; height: 16px; }
+.context .piece-volume { width: 96px; flex: none; }
+.options > .icon { color: var(--dim); }
+
+/* Timeline: lanes are painted on canvases as wide as the view. */
+.timeline {
+  position: relative;
+  max-height: 43vh;
+  background: var(--bg);
+  overflow: auto;
+  /* Always room for the scroll bar, or the lanes would move under the pointer as a montage grows. */
+  overflow-x: scroll;
+}
+
+.timeline-inner {
+  position: relative;
+  min-width: 100%;
+}
+
+.row {
+  position: relative;
+  display: flex;
+}
+
+.row-head {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  flex: none;
+  width: var(--head);
+  padding: 6px 10px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.lane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  touch-action: none;
+}
+
+.lane canvas {
+  position: sticky;
+  left: var(--head);
+  display: block;
+}
+
+.row.ruler {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  height: 26px;
+  background: var(--bg);
+}
+
+.row.ruler .row-head {
+  display: flex;
+  align-items: center;
+  padding-block: 0;
+}
+
+.row.ruler .lane { cursor: col-resize; }
+.row.video { height: 62px; }
+.row.track { height: 80px; }
+
+.row.video .row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row.video .row-head > .icon { color: var(--accent); }
+.row.video b { display: block; font-weight: 600; }
+.row.video small { color: var(--dim); }
+
+.track-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track-title .icon { color: var(--tint); }
+.row.track.off .track-title .icon { color: var(--off); }
+
+.track-name {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-weight: 600;
+}
+
+.track-name::placeholder { color: var(--text); opacity: 1; }
+
+.track-name:hover,
+.track-name:focus { border-color: var(--border); background: var(--bg); }
+
+.track-note {
+  max-width: 88px;
+  overflow: hidden;
+  color: var(--dim);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.toggle {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: var(--hover);
+  color: var(--dim);
+}
+
+.toggle .icon { width: 14px; height: 14px; }
+.toggle:hover { color: var(--text); }
+.toggle.mute.on { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low); }
+.toggle.solo.on { background: var(--warn); color: var(--on-accent); }
+.track-controls input { flex: 1; min-width: 0; }
+
+.track-controls .volume-value,
+.volume-control .volume-value {
+  flex: none;
+  width: 46px;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: text;
+}
+
+.track-controls .volume-value:hover,
+.volume-control .volume-value:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.track-controls .volume-value:focus,
+.volume-control .volume-value:focus {
+  border-color: var(--accent);
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 8;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  pointer-events: none;
+}
+
+/* Premiere-like brackets: which side of a cut is being held. */
+.timeline {
+  --cursor-start: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4H9v16h5M13 12h8m-3-3 3 3-3 3M6 9l-3 3 3 3' stroke='%230d0f14' stroke-width='4.5'/%3E%3Cpath d='M14 4H9v16h5M13 12h8m-3-3 3 3-3 3M6 9l-3 3 3 3' stroke='%2322d3ee' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 9 12, w-resize;
+  --cursor-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cg fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4h5v16h-5M11 12H3m3-3-3 3 3 3M18 9l3 3-3 3' stroke='%230d0f14' stroke-width='4.5'/%3E%3Cpath d='M10 4h5v16h-5M11 12H3m3-3-3 3 3 3M18 9l3 3-3 3' stroke='%2322d3ee' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E") 15 12, e-resize;
+}
+
+/* What pulling an edge does, next to the pointer. */
+.trim-hint {
+  position: fixed;
+  z-index: 20;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-icon);
+  background: var(--surface-alt);
+  box-shadow: 0 10px 28px #00000080;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.trim-hint b {
+  display: block;
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.trim-hint small {
+  display: block;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 12px;
+  border-radius: 3px 3px 6px 6px;
+  background: inherit;
+}
+
+/* Name, category and tags of the clip */
+.clip-title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 60px;
+  max-width: 34vw;
+  height: 32px;
+  padding: 0 8px 0 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  background: transparent;
+}
+
+.clip-title:hover { border-color: var(--border); background: var(--hover); }
+.clip-title .icon { width: 12px; height: 12px; flex: none; color: var(--dim); }
+.editor-bar .title-input { width: min(340px, 30vw); height: 32px; flex: none; font-weight: 700; }
+
+.editor-bar .chip {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 30px;
+  max-width: 190px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-icon);
+  background: transparent;
+  color: var(--tint);
+  font-size: 12px;
+}
+
+.editor-bar .chip.set {
+  border-color: color-mix(in srgb, var(--tint) 34%, transparent);
+  background: color-mix(in srgb, var(--tint) 13%, transparent);
+}
+
+.editor-bar .chip:hover { background: var(--hover); }
+.editor-bar .chip .icon { width: 13px; height: 13px; flex: none; }
+.editor-bar .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-bar .info { margin-left: 8px; }
+
+/* Playback */
+.transport,
+.moments-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.transport .skip {
+  height: 32px;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.transport .skip .icon { width: 14px; height: 14px; }
+.transport .play { margin: 0 3px; }
+.moments-tools .moments-button { height: 30px; padding: 0 9px; }
+.moments-tools .moment-step { width: 24px; }
+.moments-tools .moment-step .icon { width: 12px; height: 12px; }
+
+/* Kills, deaths and marks, above the video */
+.row.moments {
+  position: sticky;
+  top: 26px;
+  z-index: 6;
+  height: 30px;
+  background: var(--bg);
+}
+
+.row.moments .row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 0;
+}
+
+.moments-lane {
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.moment {
+  position: absolute;
+  top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px 0 5px;
+  border: 0;
+  border-left: 2px solid var(--tint);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--tint) 20%, var(--bg));
+  color: var(--tint);
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.moment span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moment .icon { width: 13px; height: 13px; flex: none; }
+.moment.named { color: var(--text); }
+.moment.named .icon { color: var(--tint); }
+.moment.bare { padding: 0 4px; }
+.moment.bare span { display: none; }
+.moment:hover { background: color-mix(in srgb, var(--tint) 32%, var(--bg)); }
+.moment.active,
+.moment.active .icon { background: var(--tint); color: var(--on-accent); }
+
+/* The name matters more than the format of the file. */
+@media (max-width: 1180px) {
+  .editor-bar .info { display: none; }
+  .editor-bar .chip { max-width: 140px; }
+}
+
+/* One row of tools, so that the video keeps its height. */
+.options .moments-tools { flex: none; margin-right: 4px; }
+
+@media (max-width: 1280px) {
+  .tools .removed > span:not(.count) { display: none; }
+  .transport .skip .icon { display: none; }
+  .transport .skip { padding: 0 6px; }
+}
+
+@media (max-width: 1120px) {
+  .transport .to-start,
+  .transport .to-end { display: none; }
+  .tools .clock { min-width: 0; padding: 0 6px; }
+  .options .ratio { min-width: 118px; }
+  .options .audio-style { min-width: 92px; }
+}
+
+/* Skipping: the amount under its icon. */
+.transport .skip {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  width: 38px;
+  height: 36px;
+  padding: 0;
+  line-height: 1;
+}
+
+.transport .skip .icon { width: 15px; height: 15px; }
+
+.transport .skip small {
+  margin-top: 2px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1280px) {
+  .transport .skip .icon { display: block; }
+  .transport .skip { width: 34px; padding: 0; }
+}
+
+/* Switches of a layer, as boxes in the timeline of After Effects. */
+.track-controls .toggle {
+  width: 24px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+}
+
+.track-controls .toggle:hover { border-color: #ffffff38; }
+.toggle.mute.on { border-color: color-mix(in srgb, var(--low) 45%, transparent); }
+.toggle.solo.on { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+
+/* Tools: grey glyphs that light up, no filled background. */
+.segmented .btn.active { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.tools .btn.ghost .icon,
+.options .btn.ghost .icon { width: 17px; height: 17px; }
+
+/* The current time can be dragged, as in After Effects. */
+.time-scrub {
+  padding: 2px 4px;
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.time-scrub:hover { background: var(--hover); text-decoration: underline dotted; text-underline-offset: 4px; }
+.time-scrub.dragging { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+.time-input {
+  width: 92px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where a round starts */
+.round-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 2px 0 0 4px;
+  border-left: 1px dashed #ffffff55;
+  color: var(--dim);
+  font-size: 9.5px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* A mark shows its colour and, once named, its name. */
+.moment.mark { border-radius: 0 6px 6px 0; }
+.moment.mark.unnamed { padding: 0 5px; }
+.moment .icon { width: 14px; height: 14px; }
+
+/* Round, whatever rule gives square buttons their width. */
+.tools .btn.play {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+/* A marker in the part being cut away. */
+.moment.cut { opacity: .35; filter: grayscale(1); }
