@@ -13,6 +13,7 @@ import { STYLES } from './waveforms.js';
 import { openExport, openOverwrite, openDiscord } from './export.js';
 import { Moments } from './moments.js';
 import { NAME_LENGTH } from '/shared/moments.mjs';
+import { VIDEO_KINDS, DURATIONS, DEFAULT_DURATION, transitionsOf } from '/shared/transitions.mjs';
 import { categoryColor, pickCategory } from './categories.js';
 import { t } from './i18n.js';
 
@@ -31,6 +32,11 @@ export class Editor {
     this.linked = remember('linked', true);
     this.audioStyle = remember('audioStyle', 'wave');
     if (!STYLES[this.audioStyle]) this.audioStyle = 'wave';
+    // The transition that Ctrl+T and the menus put: the last kind and length chosen.
+    this.transitionKind = remember('transitionKind', 'dissolve');
+    if (!Object.hasOwn(VIDEO_KINDS, this.transitionKind)) this.transitionKind = 'dissolve';
+    this.transitionLength = remember('transitionLength', DEFAULT_DURATION);
+    if (!DURATIONS.includes(this.transitionLength)) this.transitionLength = DEFAULT_DURATION;
     app.subscribe(() => this.refresh());
   }
 
@@ -157,7 +163,7 @@ export class Editor {
       onClick: (event) => {
         if (event.target !== this.crop) this.player.toggle();
       },
-    }, this.player.videos, this.crop, this.message);
+    }, this.player.videos, this.player.veil, this.crop, this.message);
 
     this.root.replaceChildren(bar, this.stage, h('section', { class: 'panel' }, this.toolbar.el, this.timeline.el));
     this.stageObserver = new ResizeObserver(() => this.placeCrop());
@@ -545,6 +551,8 @@ export class Editor {
           run: () => commands.toggleMuted(),
         },
         sound && { icon: 'link', label: t('editor.unlink'), run: () => commands.unlink() },
+        '-',
+        ...this.transitionItems(piece),
         sound && Math.abs(P.volumeOf(piece) - 1) > P.EPS && {
           icon: 'volume',
           label: t('piece.volumeReset'),
@@ -589,6 +597,18 @@ export class Editor {
       items.push('-', { icon: 'trash', label: t('common.delete'), hint: t('key.delete'), danger: true, run: () => commands.remove() });
     }
     showMenu({ ...point, title, items });
+  }
+
+  /** Add or remove the transition at the start and at the end of a piece. */
+  transitionItems(piece) {
+    const { commands } = this;
+    const list = transitionsOf(this.edit.pieces, piece.lane);
+    return [['start', piece.at], ['end', P.endOf(piece)]].map(([side, time]) => {
+      const found = list.find((transition) => Math.abs(transition.cut - time) < P.EPS);
+      return found
+        ? { icon: 'transition', label: t(`transition.remove.${side}`), run: () => commands.removeTransition(found) }
+        : { icon: 'transition', label: t(`transition.add.${side}`), run: () => commands.addTransition(piece.lane, time) };
+    });
   }
 
   /** The card shows the picture at `time` of the file, or the one chosen by the app with null. */
@@ -772,6 +792,7 @@ export class Editor {
         c: () => commands.copy(),
         v: () => commands.paste(),
         d: () => commands.duplicate(),
+        t: () => commands.transitionAtPlayhead(),
         x: () => event.shiftKey && commands.clearZone(),
         arrowleft: () => this.skip(-SKIP),
         arrowright: () => this.skip(SKIP),

@@ -3,6 +3,7 @@ import { toast } from './dom.js';
 import * as P from '/shared/pieces.mjs';
 import { zoneOf } from '/shared/edit.mjs';
 import { removedParts, restorePart, restoreAll } from '/shared/restore.mjs';
+import { transitionsOf, setTransition, edgeAt, edgesOf, SOUND_KIND } from '/shared/transitions.mjs';
 import { t } from './i18n.js';
 
 export class Commands {
@@ -151,9 +152,83 @@ export class Commands {
     }
   }
 
+  // Transitions
+
+  /** The selected transition, as it plays now, or null. */
+  selectedTransition() {
+    const { selection } = this.editor;
+    if (selection?.type !== 'transition') return null;
+    return transitionsOf(this.pieces, selection.lane)
+      .find((transition) => transition.owner.id === selection.id && transition.owner.side === selection.side) || null;
+  }
+
+  /** What the owner of a transition holds: its kind and the length it was given. */
+  storedTransition(transition) {
+    const owner = this.pieces.find((piece) => piece.id === transition.owner.id);
+    return owner?.[transition.owner.side === 'in' ? 'transitionIn' : 'transitionOut'];
+  }
+
+  /** Selects the transition of a lane at a time, once the montage holds it. */
+  selectTransitionAt(lane, time) {
+    const found = transitionsOf(this.pieces, lane).find((transition) => Math.abs(transition.cut - time) < P.EPS);
+    if (found) this.editor.select({ type: 'transition', lane, id: found.owner.id, side: found.owner.side });
+  }
+
+  /**
+   * Puts the default transition at the cut or edge of a lane at `time`. On the picture, the tracks cut
+   * at the same time get a crossfade too, as the sound of a cut goes with its picture.
+   */
+  addTransition(lane, time) {
+    const { editor } = this;
+    const duration = editor.transitionLength;
+    let pieces = setTransition(this.pieces, lane, time, { kind: lane === P.VIDEO ? editor.transitionKind : SOUND_KIND, duration });
+    if (lane === P.VIDEO) {
+      editor.edit.tracks.forEach((_, track) => {
+        if (edgeAt(pieces, track, time)) pieces = setTransition(pieces, track, time, { kind: SOUND_KIND, duration });
+      });
+    }
+    if (pieces === this.pieces) {
+      toast(t('transition.nothing'));
+      return;
+    }
+    editor.apply(pieces);
+    this.selectTransitionAt(lane, time);
+  }
+
+  /** The default transition at the cut of the picture nearest to the playhead. */
+  transitionAtPlayhead() {
+    const edges = edgesOf(this.pieces, P.VIDEO);
+    if (!edges.length) return;
+    const nearest = edges.reduce((best, edge) => (Math.abs(edge - this.time) < Math.abs(best - this.time) ? edge : best));
+    this.addTransition(P.VIDEO, nearest);
+  }
+
+  removeTransition(transition = this.selectedTransition()) {
+    if (!transition) return;
+    this.editor.select(null);
+    this.editor.apply(setTransition(this.pieces, transition.lane, transition.cut, null));
+  }
+
+  /** Another kind or length for the selected transition. The kind becomes the default one. */
+  changeTransition(patch) {
+    const { editor } = this;
+    const transition = this.selectedTransition();
+    if (!transition) return;
+    const stored = this.storedTransition(transition);
+    const value = { ...stored, ...patch };
+    if (patch.kind) editor.setOption('transitionKind', patch.kind);
+    if (patch.duration) editor.setOption('transitionLength', patch.duration);
+    editor.apply(setTransition(this.pieces, transition.lane, transition.cut, value));
+    this.selectTransitionAt(transition.lane, transition.cut);
+  }
+
   remove() {
     const { editor } = this;
     const { selection } = editor;
+    if (selection?.type === 'transition') {
+      this.removeTransition();
+      return;
+    }
     if (selection?.type === 'moment') {
       const item = editor.moments.selected();
       if (item) editor.moments.remove(item);

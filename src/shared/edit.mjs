@@ -1,6 +1,7 @@
 // A saved edit: { version: 2, pieces, tracks, ratio, position, zone }.
 // `zone` is [start, end] in the montage, or null: what playback, export and overwrite keep.
 import { RATIOS, clamp, cropRect } from './geometry.mjs';
+import { cleanTransition, blendsPicture } from './transitions.mjs';
 import { VIDEO, MIN_SPEED, MAX_SPEED, MAX_PIECE_VOLUME, MIN_LENGTH, EPS, muteRange, hasOverlap, pieceAt, sourceAt, totalLength, copySpan, onLane } from './pieces.mjs';
 
 export const VERSION = 2;
@@ -58,6 +59,16 @@ function fromVersion1(edit, clip) {
   return pieces;
 }
 
+/** The transitions a saved piece holds, checked, added to its clean copy. */
+function withTransitions(saved, piece) {
+  const lane = Number(saved.lane);
+  for (const key of ['transitionIn', 'transitionOut']) {
+    const value = cleanTransition(saved[key], lane);
+    if (value) piece[key] = value;
+  }
+  return piece;
+}
+
 /** Turns anything saved or received into a valid edit of the current version. */
 export function loadEdit(saved, clip) {
   const base = createEdit(clip);
@@ -67,7 +78,7 @@ export function loadEdit(saved, clip) {
   if (saved.version === VERSION && Array.isArray(saved.pieces)) raw = saved.pieces;
   else if (Array.isArray(saved.segments) && saved.segments.length) raw = fromVersion1(saved, clip);
 
-  const pieces = (raw || base.pieces).map((piece, i) => ({
+  const pieces = (raw || base.pieces).map((piece, i) => withTransitions(piece, {
     id: Number.isSafeInteger(piece.id) ? piece.id : i + 1,
     group: Number.isSafeInteger(piece.group) ? piece.group : i + 1,
     lane: Number(piece.lane),
@@ -110,7 +121,7 @@ export function audibleTracks(tracks) {
 /** Fast export needs an uncut picture; audio may be edited as long as it plays in place. */
 export function canCopyVideo(edit) {
   const video = edit.pieces.filter((piece) => piece.lane === VIDEO);
-  if (video.length !== 1 || edit.ratio !== 'original') return false;
+  if (video.length !== 1 || edit.ratio !== 'original' || blendsPicture(edit.pieces)) return false;
   const [only] = video;
   if (only.at > EPS || only.speed !== 1) return false;
   return edit.pieces.every((piece) => {

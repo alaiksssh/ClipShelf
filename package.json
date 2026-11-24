@@ -1,7 +1,7 @@
 {
   "name": "clipshelf",
   "productName": "ClipShelf",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "private": true,
   "description": "Library and editor for local clips",
   "author": "ClipShelf",

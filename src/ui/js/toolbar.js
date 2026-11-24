@@ -7,6 +7,7 @@ import { STYLES } from './waveforms.js';
 import { dropdown } from './menu.js';
 import { KINDS, labelOf } from '/shared/moments.mjs';
 import { MAX_VOLUME, zoneOf } from '/shared/edit.mjs';
+import { VIDEO_KINDS, DURATIONS } from '/shared/transitions.mjs';
 import { timeField } from './timeField.js';
 import { volumeField } from './volumeField.js';
 import { t } from './i18n.js';
@@ -85,6 +86,7 @@ export class Toolbar {
       tool('scissors', t('tool.split'), () => commands.split()),
       tool('start', t('tool.zoneStart'), () => commands.zoneEdge('start')),
       tool('end', t('tool.zoneEnd'), () => commands.zoneEdge('end')),
+      tool('transition', t('tool.transition'), () => commands.transitionAtPlayhead()),
       tool('duplicate', t('tool.duplicate'), () => commands.duplicate()),
       tool('trash', t('tool.delete'), () => commands.remove()),
       sep(),
@@ -248,6 +250,34 @@ export class Toolbar {
     this.renderContext();
   }
 
+  /** Kind, length and removal of the selected transition. */
+  transitionControls(transition) {
+    const { editor } = this;
+    const { commands } = editor;
+    const stored = commands.storedTransition(transition);
+    const picture = transition.lane === P.VIDEO;
+    const where = picture ? t('editor.video') : editor.trackName(transition.lane);
+    const lengths = [...new Set([...DURATIONS, stored.duration])].sort((a, b) => a - b);
+    return [
+      h('b', {}, t('transition.label', { where, length: format.seconds(transition.end - transition.start) })),
+      picture && dropdown({
+        class: 'transition-kind',
+        title: t('transition.kind'),
+        value: stored.kind,
+        options: Object.keys(VIDEO_KINDS).map((kind) => ({ value: kind, icon: 'transition', label: t(`transition.${kind}`) })),
+        onChange: (kind) => commands.changeTransition({ kind }),
+      }),
+      dropdown({
+        class: 'transition-length',
+        title: t('transition.length'),
+        value: stored.duration,
+        options: lengths.map((value) => ({ value, label: format.seconds(value) })),
+        onChange: (duration) => commands.changeTransition({ duration }),
+      }),
+      button({ icon: 'trash', label: t('common.remove'), title: t('transition.removeTitle'), class: 'danger', onClick: () => commands.removeTransition() }),
+    ].filter(Boolean);
+  }
+
   /** The volume control, set for the selected pieces of sound. */
   pieceVolume(piece) {
     const { editor } = this;
@@ -307,6 +337,14 @@ export class Toolbar {
           t(picture ? 'range.deleteAll' : 'range.deleteOne')),
       ].filter(Boolean));
       return;
+    }
+
+    if (selection?.type === 'transition') {
+      const transition = commands.selectedTransition();
+      if (transition) {
+        this.context.replaceChildren(...this.transitionControls(transition));
+        return;
+      }
     }
 
     if (selection?.type === 'moment') {

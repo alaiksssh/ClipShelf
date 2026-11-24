@@ -10,6 +10,7 @@ import { openSettings } from './dialogs.js';
 import { openStorage } from './storage.js';
 import { openAddGame } from './addGame.js';
 import { openDuplicates } from './duplicates.js';
+import { openNews } from './news.js';
 
 function itemsOf(app) {
   const { library, editor } = app;
@@ -41,6 +42,7 @@ function itemsOf(app) {
     command('duplicate', t('dup.menu'), () => openDuplicates(app)),
     command('plus', t('games.add'), () => openAddGame(app)),
     command('keyboard', t('settings.showShortcuts'), () => call('showShortcuts')),
+    command('history', t('news.open'), () => openNews(app.state.version, { afterUpdate: false })),
     command('refresh', t('lib.refresh'), () => call('rescan')),
     ...THEMES.map((theme) => ({ ...command('image', t('palette.theme', { name: theme.name }), () => call('setTheme', theme.id)), weight: 1 })),
     ...LANGUAGES.filter(({ id }) => id !== language)

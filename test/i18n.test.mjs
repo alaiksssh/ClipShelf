@@ -65,6 +65,7 @@ test('every key the code asks for exists', () => {
 
 test('no key of the dictionaries is left unused', () => {
   const unused = Object.keys(en).filter((key) => !code.includes(`'${key}'`) && !code.includes(`"${key}"`)
-    && !/^(age|color)\./.test(key));
+    // Families named from a value in the code: ages, colours, kinds of transitions, their sides.
+    && !/^(age|color)\.|^transition\.(add|remove)\.|^transition\.(dissolve|black|white|wipe|slide|iris|zoom|crossfade)$/.test(key));
   assert.deepEqual(unused, []);
 });

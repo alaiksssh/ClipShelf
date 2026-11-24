@@ -126,7 +126,11 @@ function coalesce(pieces) {
     for (const [group, left] of byGroup) {
       const next = [...byGroup].find(([other, right]) => other !== group && follows(left, right));
       if (!next) continue;
-      for (const piece of left) piece.to = next[1].find((other) => other.lane === piece.lane).to;
+      for (const piece of left) {
+        const right = next[1].find((other) => other.lane === piece.lane);
+        piece.to = right.to;
+        if (right.transitionOut) piece.transitionOut = right.transitionOut;
+      }
       byGroup.delete(next[0]);
       joined = true;
       break;

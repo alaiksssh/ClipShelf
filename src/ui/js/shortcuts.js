@@ -30,6 +30,7 @@ export const SHORTCUTS = [
     [t('key.ctrlClick'), t('sc.addSelection')],
     ['N / L', t('sc.magnetLink')],
     ['M', t('sc.mute')],
+    ['Ctrl + T', t('sc.transition')],
     [t('key.delete'), t('sc.delete')],
     ['Ctrl + C / V / D', t('sc.clipboard')],
     ['Ctrl + Z / Y', t('sc.undo')],

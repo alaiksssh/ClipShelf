@@ -6,8 +6,9 @@ import { MAX_VOLUME, audibleTracks, zoneOf } from '/shared/edit.mjs';
 import { clamp } from '/shared/geometry.mjs';
 import { volumeField } from './volumeField.js';
 import { prepareTrack } from './waveforms.js';
-import { Painter, TRACK_COLORS, EDGE, prepareCanvas, visiblePieces } from './painter.js';
-import { Scrub, SelectRange, Move, Trim, ZoneEdge } from './gestures.js';
+import { Painter, TRACK_COLORS, EDGE, prepareCanvas, visiblePieces, transitionBox } from './painter.js';
+import { Scrub, SelectRange, Move, Trim, ZoneEdge, TransitionLength } from './gestures.js';
+import { transitionsOf } from '/shared/transitions.mjs';
 import { MomentLane } from './momentLane.js';
 import { t } from './i18n.js';
 
@@ -104,6 +105,7 @@ export class Timeline {
       onPointerleave: () => {
         if (this.gesture) return;
         this.pointed = null;
+        this.hoveredTransition = null;
         this.hideHint();
         this.setHover(null);
         this.draw();
@@ -297,6 +299,29 @@ export class Timeline {
   }
 
   /**
+   * The transition under the pointer, with the side being grabbed when the pointer is on one of its
+   * ends: { transition, edge }. Only the selection tool takes transitions.
+   */
+  transitionUnder(event, lane) {
+    if (this.editor.tool !== 'select') return null;
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - box.left - this.offset;
+    const y = event.clientY - box.top;
+    const view = { height: box.height, scale: this.scale };
+    for (const transition of transitionsOf(this.editor.edit.pieces, lane)) {
+      const area = transitionBox(transition, view);
+      if (y < area.top - 2 || y > area.bottom + 2 || x < area.left - 4 || x > area.right + 4) continue;
+      let edge = null;
+      if (area.right - area.left > 16) {
+        if (Math.abs(x - area.left) <= 5) edge = 'start';
+        else if (Math.abs(x - area.right) <= 5) edge = 'end';
+      }
+      return { transition, edge };
+    }
+    return null;
+  }
+
+  /**
    * What the selection tool takes here: the handle of a cut, an edge (also from just outside of it),
    * or deleted sound.
    */
@@ -340,7 +365,13 @@ export class Timeline {
     const grip = this.grip(event, lane);
     this.hideHint();
 
-    if (editor.tool === 'range') {
+    const transition = this.transitionUnder(event, lane);
+    if (transition) {
+      const { owner } = transition.transition;
+      editor.select({ type: 'transition', lane, id: owner.id, side: owner.side });
+      if (transition.edge) this.begin(event, new TransitionLength(this, event, transition.transition, transition.edge));
+      else editor.player.seek(transition.transition.cut);
+    } else if (editor.tool === 'range') {
       this.begin(event, new SelectRange(this, event, lane));
     } else if (grip && !grip.hole && !event.ctrlKey) {
       const piece = grip.piece || grip.seam.start || grip.seam.end;
@@ -443,6 +474,19 @@ export class Timeline {
 
   point(event, lane) {
     if (this.gesture) return;
+    const over = this.transitionUnder(event, lane);
+    const hovered = over && `${lane}|${over.transition.owner.id}|${over.transition.owner.side}`;
+    if (hovered !== this.hoveredTransition) {
+      this.hoveredTransition = hovered;
+      this.draw();
+    }
+    if (over) {
+      event.currentTarget.style.cursor = over.edge ? 'ew-resize' : 'pointer';
+      const { kind, start, end } = over.transition;
+      this.showHint(event, t(`transition.${kind}`), over.edge ? t('transition.dragHint') : format.seconds(end - start));
+      this.setHover(null);
+      return;
+    }
     const found = this.hit(lane, this.timeAt(event.clientX));
     const grip = this.grip(event, lane);
     const { tool } = this.editor;
@@ -602,6 +646,8 @@ export class Timeline {
 
   update() {
     if (!this.scale) return;
+    // What was under a still pointer may have moved: its hint comes back with the next move.
+    if (!this.gesture) this.hideHint();
     this.stretch();
     this.momentLane.update();
     this.layout();
@@ -695,6 +741,13 @@ export class Timeline {
       }
       for (const piece of visiblePieces(this.remaining, lane, view)) {
         painter.piece(ctx, piece, view, { ...look, cut: 0.5, name: t('timeline.cut') });
+      }
+      for (const transition of transitionsOf(edit.pieces, lane)) {
+        const { owner } = transition;
+        painter.transition(ctx, transition, view, {
+          selected: selection?.type === 'transition' && selection.lane === lane && selection.id === owner.id && selection.side === owner.side,
+          hovered: this.hoveredTransition === `${lane}|${owner.id}|${owner.side}`,
+        });
       }
       if (lane === VIDEO) {
         this.handles = [];

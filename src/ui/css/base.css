@@ -956,6 +956,109 @@ dialog.palette[open] { display: flex; flex-direction: column; }
 .news { display: flex; flex-direction: column; gap: 12px; margin: 6px 0 0; padding: 0; list-style: none; }
 .news li { display: flex; gap: 12px; align-items: flex-start; color: var(--text); }
 .news .icon { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--accent); }
+.news-dialog { width: min(560px, calc(100vw - 40px)); }
+.news-dialog .dialog-head h2 { flex: 1; }
+.news-nav { display: flex; align-items: center; gap: 4px; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.news-where { min-width: 44px; text-align: center; }
+
+/* The illustration of a version (news.js): drawn in CSS, played in a loop of 9 s. */
+.news-hero { margin: 0 0 18px; }
+.hero-screen {
+  position: relative;
+  height: 172px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #000;
+}
+.hero-shot { position: absolute; inset: 0; }
+.hero-shot i { position: absolute; display: block; }
+.hero-shot i:first-child { top: 26px; right: 64px; width: 46px; height: 46px; border-radius: 50%; }
+.hero-shot i:last-child { right: -10%; bottom: -40px; left: -10%; height: 90px; border-radius: 50% 50% 0 0; }
+.shot-a { background: linear-gradient(160deg, #2b2f77, #4f6be0); }
+.shot-a i:first-child { background: #ffd36e; }
+.shot-a i:last-child { background: #1b1f4d; }
+.shot-b { background: linear-gradient(160deg, #7a2b4f, #f0832f); animation: hero-wipe-dissolve 9s linear infinite; }
+.shot-b i:first-child { left: 60px; background: #fff1c9; }
+.shot-b i:last-child { background: #4a1630; }
+.shot-c { background: linear-gradient(160deg, #0f4d48, #2fb59a); animation: hero-iris 9s linear infinite; }
+.shot-c i:first-child { right: 46%; background: #e6fff6; }
+.shot-c i:last-child { background: #0b2e2b; }
+.hero-names span {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+}
+.hero-names .icon { width: 14px; height: 14px; }
+.name-wipe { animation: hero-name-1 9s linear infinite; }
+.name-dissolve { animation: hero-name-2 9s linear infinite; }
+.name-iris { animation: hero-name-3 9s linear infinite; }
+
+.hero-timeline { position: relative; display: grid; gap: 4px; margin-top: 8px; }
+.hero-lane { position: relative; height: 20px; border-radius: 4px; background: var(--hover); }
+.hero-lane.sound { height: 14px; }
+.hero-lane b { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.hero-lane .piece-a { left: 0; width: 14%; background: #4f6be0aa; }
+.hero-lane .piece-b { left: 14%; width: 30%; background: #f0832faa; }
+.hero-lane .piece-a2 { left: 44%; width: 24%; background: #4f6be0aa; }
+.hero-lane .piece-c { left: 68%; width: 32%; background: #2fb59aaa; }
+.hero-lane.sound b { opacity: .6; }
+.hero-lane .band {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  z-index: 1;
+  width: 12%;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: linear-gradient(to top right, transparent calc(50% - 1px), var(--text) 50%, transparent calc(50% + 1px)),
+    color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.hero-lane .band-1 { left: 8%; }
+.hero-lane .band-2 { left: 38%; }
+.hero-lane .band-3 { left: 62%; }
+.hero-playhead {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 0;
+  z-index: 2;
+  width: 2px;
+  background: var(--text);
+  animation: hero-playhead 9s linear infinite;
+}
+
+@keyframes hero-wipe-dissolve {
+  0%, 8% { clip-path: inset(0 0 0 100%); opacity: 1; }
+  20%, 38% { clip-path: inset(0 0 0 0); opacity: 1; }
+  50%, 100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+@keyframes hero-iris {
+  0%, 62% { clip-path: circle(0% at 50% 50%); opacity: 1; }
+  74%, 92% { clip-path: circle(75% at 50% 50%); opacity: 1; }
+  100% { clip-path: circle(75% at 50% 50%); opacity: 0; }
+}
+@keyframes hero-name-1 { 0%, 5% { opacity: 0; } 8%, 22% { opacity: 1; } 26%, 100% { opacity: 0; } }
+@keyframes hero-name-2 { 0%, 35% { opacity: 0; } 38%, 52% { opacity: 1; } 56%, 100% { opacity: 0; } }
+@keyframes hero-name-3 { 0%, 59% { opacity: 0; } 62%, 76% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes hero-playhead { from { left: 0; } to { left: calc(100% - 2px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .shot-b, .shot-c, .hero-names span, .hero-playhead { animation: none; }
+  .shot-b { clip-path: inset(0 0 0 50%); }
+  .shot-c { display: none; }
+  .hero-playhead { left: 14%; }
+}
 
 /* Short transitions only, on colours and opacity; none for those who ask the system for less motion. */
 .btn { transition: background-color .12s, color .12s, opacity .12s, border-color .12s; }

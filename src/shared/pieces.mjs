@@ -22,9 +22,21 @@ export const endOf = (piece) => piece.at + lengthOf(piece);
 export const sourceAt = (piece, time) => piece.from + (time - piece.at) * piece.speed;
 export const volumeOf = (piece) => piece.volume ?? 1;
 
-/** Whether two pieces of a lane sound the same, so that a cut between them can close. */
+/**
+ * Whether the cut between two pieces of a lane can close: they play alike, and no transition is
+ * placed there.
+ */
 export const soundsAlike = (a, b) => a.speed === b.speed && a.muted === b.muted
-  && Math.abs(volumeOf(a) - volumeOf(b)) < EPS;
+  && Math.abs(volumeOf(a) - volumeOf(b)) < EPS && !a.transitionOut && !b.transitionIn;
+
+/** The two halves of a cut piece: the transition at its start stays left, the one at its end goes right. */
+function halves(piece) {
+  const { transitionIn, transitionOut, ...rest } = piece;
+  return [
+    transitionIn ? { ...rest, transitionIn } : rest,
+    transitionOut ? { ...rest, transitionOut } : rest,
+  ];
+}
 
 export function totalLength(pieces) {
   return pieces.reduce((max, piece) => Math.max(max, endOf(piece)), 0);
@@ -90,9 +102,10 @@ export function split(pieces, time, { only = () => true, keepGroup = false } = {
     }
     const middle = sourceAt(piece, time);
     if (!groups.has(piece.group)) groups.set(piece.group, keepGroup ? piece.group : next.group());
+    const [left, right] = halves(piece);
     return [
-      { ...piece, to: middle },
-      { ...piece, id: next.id(), group: groups.get(piece.group), at: time, from: middle },
+      { ...left, to: middle },
+      { ...right, id: next.id(), group: groups.get(piece.group), at: time, from: middle },
     ];
   });
 }

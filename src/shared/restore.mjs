@@ -86,7 +86,12 @@ export function join(pieces, time, lanes) {
   const groups = new Map([...pairs].map(([left, right]) => [right.group, left.group]));
   const gone = new Set(pairs.values());
   return pieces.filter((piece) => !gone.has(piece)).map((piece) => {
-    const merged = pairs.has(piece) ? { ...piece, to: pairs.get(piece).to } : piece;
+    const right = pairs.get(piece);
+    let merged = piece;
+    if (right) {
+      merged = { ...piece, to: right.to };
+      if (right.transitionOut) merged.transitionOut = right.transitionOut;
+    }
     const follows = piece.at >= time - EPS && groups.has(piece.group);
     return follows ? { ...merged, group: groups.get(piece.group) } : merged;
   });

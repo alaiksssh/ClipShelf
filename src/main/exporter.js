@@ -8,6 +8,7 @@ const { t, decimal, bytes: megabytes } = require('./i18n');
 const shared = Promise.all([
   import('../shared/edit.mjs'),
   import('../shared/pieces.mjs'),
+  import('../shared/transitions.mjs'),
   import('../shared/geometry.mjs'),
 ]).then((modules) => Object.assign({}, ...modules));
 
@@ -73,43 +74,115 @@ function atempo(speed) {
 /**
  * Builds the inputs and filters of a montage. Each lane becomes a chain of pieces and gaps, whose
  * boundaries are rounded cumulatively, so picture and sound cannot drift whatever the cuts.
+ *
+ * A transition at a cut takes half its length from the file after the end of the piece before, and
+ * half before the start of the piece after ("handles"): the chain is split there into segments, joined
+ * by xfade (picture) or acrossfade (sound) over the length of both handles, so the montage keeps its
+ * length. Where the file has no frame left for a handle, the first or last frame is held (silence on
+ * a track). At an edge with nothing next to it, the piece fades from or to black, white or silence.
  */
 function buildMontage(options, { video = true, size = null, fps = options.fps } = {}) {
-  const { model, pieces, groups, crop, width, height, length } = options;
+  const { model, pieces, groups, crop, width, height, length, duration } = options;
   const ranges = [];
   const indexes = new Map();
-  const inputOf = (piece) => {
+  /** The input of a piece, `lead` and `tail` seconds of the montage wider on each side. */
+  const inputOf = (piece, lead = 0, tail = 0) => {
+    const from = Math.max(0, piece.from - lead * piece.speed);
+    const to = Math.min(duration, piece.to + tail * piece.speed);
     // Linked pieces share an input. The position is in the key, so duplicates get their own.
-    const key = [piece.at, piece.from, piece.to].map((v) => v.toFixed(4)).join('|');
+    const key = [piece.at, from, to].map((v) => v.toFixed(4)).join('|');
     if (!indexes.has(key)) {
       indexes.set(key, ranges.length);
-      ranges.push([piece.from, piece.to]);
+      ranges.push([from, to]);
     }
     return indexes.get(key);
   };
 
   const parts = [];
   let count = 0;
-  const chain = (lane, unit, fromPiece, forGap) => {
-    const labels = [];
-    const add = (body, input = '') => {
-      const label = `[p${(count += 1)}]`;
-      parts.push(`${input}${body}${label}`);
-      labels.push(label);
+  const label = () => `[p${(count += 1)}]`;
+  /**
+   * `fromPiece(piece, units, shape, input)` gives the filters of a piece, where shape is { lead, tail,
+   * missing, fadeIn, fadeOut } in units. `forGap(units)` gives a gap. `join(kind, units, firstUnits)`
+   * blends two segments. Returns the label of the whole lane.
+   */
+  const chain = (lane, unit, fromPiece, forGap, join) => {
+    const cuts = new Map(); // Id of the piece after a cut -> { kind, half, left }.
+    const edges = new Map(); // Id -> { fadeIn, fadeOut }, in units.
+    for (const transition of model.transitionsOf(pieces, lane)) {
+      const units = Math.max(2, Math.round((transition.end - transition.start) * unit));
+      if (transition.left && transition.right) {
+        cuts.set(transition.right.id, { kind: transition.kind, half: Math.round(units / 2), left: transition.left.id });
+      } else {
+        const piece = transition.right || transition.left;
+        const edge = edges.get(piece.id) || {};
+        edge[transition.right ? 'fadeIn' : 'fadeOut'] = { kind: transition.kind, units };
+        edges.set(piece.id, edge);
+      }
+    }
+    const tails = new Map([...cuts.values()].map((cut) => [cut.left, cut.half]));
+
+    const segments = [{ labels: [], units: 0 }];
+    const joins = [];
+    const add = (body, input, units) => {
+      const out = label();
+      parts.push(`${input}${body}${out}`);
+      const segment = segments.at(-1);
+      segment.labels.push(out);
+      segment.units += units;
     };
     let cursor = 0;
+    let last = null;
     for (const piece of model.onLane(pieces, lane)) {
       if (piece.muted) continue;
       const start = Math.max(cursor, Math.round(piece.at * unit));
       const end = Math.round(model.endOf(piece) * unit);
       if (end <= start) continue;
-      if (start > cursor) add(forGap(start - cursor));
-      add(...fromPiece(piece, end - start));
+      if (start > cursor) add(forGap(start - cursor), '', start - cursor);
+      const cut = cuts.get(piece.id);
+      const lead = cut && last === cut.left && start === cursor ? cut.half : 0;
+      if (lead) {
+        joins.push({ kind: cut.kind, units: lead + tails.get(cut.left) });
+        segments.push({ labels: [], units: 0 });
+      }
+      const tail = tails.get(piece.id) && cuts.has(nextId(piece)) ? tails.get(piece.id) : 0;
+      // What the file holds before the piece, in units of the montage: the rest of the lead is held.
+      const held = Math.min(lead, Math.floor((piece.from / piece.speed) * unit + 1e-6));
+      const edge = edges.get(piece.id) || {};
+      add(...fromPiece(piece, end - start, {
+        lead, tail, missing: lead - held, fadeIn: edge.fadeIn, fadeOut: edge.fadeOut,
+      }, inputOf(piece, lead / unit, tail / unit)), end - start + lead + tail);
       cursor = end;
+      last = piece.id;
     }
     const total = Math.max(1, Math.round(length * unit));
-    if (cursor < total) add(forGap(total - cursor));
-    return labels;
+    if (cursor < total) add(forGap(total - cursor), '', total - cursor);
+
+    let current = null;
+    let currentUnits = 0;
+    segments.forEach((segment, i) => {
+      if (!segment.labels.length) return;
+      const out = label();
+      parts.push(`${segment.labels.join('')}concat=n=${segment.labels.length}:${unit === SAMPLE_RATE ? 'v=0:a=1' : 'v=1:a=0'}${out}`);
+      if (!current) {
+        current = out;
+        currentUnits = segment.units;
+        return;
+      }
+      const blend = joins[i - 1];
+      const joined = label();
+      parts.push(`${current}${out}${join(blend.kind, blend.units, currentUnits)}${joined}`);
+      current = joined;
+      currentUnits += segment.units - blend.units;
+    });
+    return current;
+
+    /** The id of the piece that follows on this lane, when it touches. */
+    function nextId(piece) {
+      const row = model.onLane(pieces, lane).filter((other) => !other.muted);
+      const after = row[row.indexOf(piece) + 1];
+      return after && Math.abs(model.endOf(piece) - after.at) < model.EPS ? after.id : null;
+    }
   };
 
   if (video) {
@@ -120,32 +193,45 @@ function buildMontage(options, { video = true, size = null, fps = options.fps } 
       `scale=${out.w}:${out.h}`, 'setsar=1', 'format=yuv420p',
     ].filter(Boolean).join(',');
     const timing = `settb=AVTB,setpts=N/(${fps})/TB`;
-    const labels = chain(
+    const seconds = (frames) => (frames / rate).toFixed(6);
+    const fade = (way, edge, first) => `,fade=t=${way}:s=${first}:n=${edge.units}:c=${edge.kind === 'white' ? 'white' : 'black'}`;
+    const whole = chain(
       model.VIDEO,
       rate,
-      (piece, frames) => [
+      (piece, frames, { lead, tail, missing, fadeIn, fadeOut }, input) => [
         `setpts=PTS/${piece.speed},fps=fps=${fps}:start_time=0,${shape},`
-          + `tpad=stop_mode=clone:stop=-1,trim=end_frame=${frames},${timing}`,
-        `[${inputOf(piece)}:v:0]`,
+          + `tpad=${missing ? `start_mode=clone:start=${missing}:` : ''}stop_mode=clone:stop=-1,`
+          + `trim=end_frame=${frames + lead + tail},${timing}`
+          + (fadeIn ? fade('in', fadeIn, 0) : '')
+          + (fadeOut ? fade('out', fadeOut, frames + lead + tail - fadeOut.units) : ''),
+        `[${input}:v:0]`,
       ],
       (frames) => `color=c=black:s=${out.w}x${out.h}:r=${fps},trim=end_frame=${frames},setsar=1,format=yuv420p,${timing}`,
+      (kind, frames, firstFrames) => `xfade=transition=${model.VIDEO_KINDS[kind] || 'fade'}`
+        + `:duration=${seconds(frames)}:offset=${seconds(firstFrames - frames)},${timing}`,
     );
-    parts.push(`${labels.join('')}concat=n=${labels.length}:v=1:a=0,fps=${fps}[video]`);
+    parts.push(`${whole}fps=${fps}[video]`);
   }
 
   groups.forEach((group, g) => {
     const mixed = group.map((track, k) => {
-      const labels = chain(
+      const afade = (way, edge, first) => `,afade=t=${way}:ss=${first}:ns=${edge.units}:curve=qsin`;
+      const whole = chain(
         track.index,
         SAMPLE_RATE,
-        (piece, samples) => [
+        (piece, samples, { lead, tail, missing, fadeIn, fadeOut }, input) => [
           `aresample=${SAMPLE_RATE}:async=1:first_pts=0,${AUDIO_FORMAT},${atempo(piece.speed)},`
-            + `${pieceVolume(model.volumeOf(piece))}apad,atrim=end_sample=${samples},asetpts=N/SR/TB`,
-          `[${inputOf(piece)}:a:${track.index}]`,
+            + `${pieceVolume(model.volumeOf(piece))}`
+            + `${missing ? `adelay=delays=${((missing / SAMPLE_RATE) * 1000).toFixed(3)}:all=1,` : ''}`
+            + `apad,atrim=end_sample=${samples + lead + tail},asetpts=N/SR/TB`
+            + (fadeIn ? afade('in', fadeIn, 0) : '')
+            + (fadeOut ? afade('out', fadeOut, samples + lead + tail - fadeOut.units) : ''),
+          `[${input}:a:${track.index}]`,
         ],
         (samples) => `anullsrc=r=${SAMPLE_RATE}:cl=stereo,${AUDIO_FORMAT},atrim=end_sample=${samples},asetpts=N/SR/TB`,
+        (kind, samples) => `acrossfade=ns=${samples}:c1=qsin:c2=qsin,asetpts=N/SR/TB`,
       );
-      parts.push(`${labels.join('')}concat=n=${labels.length}:v=0:a=1,volume=${track.volume}[t${g}_${k}]`);
+      parts.push(`${whole}volume=${track.volume}[t${g}_${k}]`);
       return `[t${g}_${k}]`;
     });
     const mix = group.length > 1 ? `amix=inputs=${group.length}:normalize=0:duration=longest,` : '';
@@ -189,6 +275,7 @@ function notCopiedBecause(clip, { model, edit, pieces }) {
   if (video.length !== 1) return t('log.why.pieces');
   if (edit.ratio !== 'original') return t('log.why.cropped');
   if (video[0].speed !== 1) return t('log.why.speed');
+  if (model.blendsPicture(pieces)) return t('log.why.transitions');
   if (video[0].at > model.EPS) return t('log.why.moved');
   if (!model.canCopyVideo({ ...edit, pieces })) return t('log.why.shifted');
   // A copy would start on the key frame before the cut.
@@ -218,6 +305,7 @@ async function prepare(clip, request) {
     height: crop?.h ?? clip.height,
     fps: frameRate(clip.fps),
     length: model.totalLength(pieces),
+    duration: clip.duration,
     groups: request.separate ? tracks.map((track) => [track]) : tracks.length ? [tracks] : [],
     mode,
     targetMB: Number(request.targetMB),

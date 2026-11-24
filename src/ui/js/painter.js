@@ -14,6 +14,7 @@ const RADIUS = 6;
 const STRIP = 16; // Name strip on top of each piece.
 const CORNER = 8; // Mark of an edge that has something to give back.
 const SEAM = { height: 22, icon: 11, padding: 7, gap: 4 };
+const TRANSITION = { min: 14, height: 22, gap: 3 }; // Pixels: a short transition stays easy to grab.
 const TILE = 92;
 const TICKS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
 const LABEL_SPACE = 76;
@@ -26,6 +27,22 @@ function drawIcon(ctx, name, x, y, size) {
   ctx.scale(size / 256, size / 256);
   ctx.fill(ICON_PATH[name]);
   ctx.restore();
+}
+
+/**
+ * Where a transition is drawn on its lane, in pixels of the whole lane (scroll not taken off): a band
+ * under the name strip, over the cut. Hit tests use the same box.
+ */
+export function transitionBox(transition, { height, scale }) {
+  let left = transition.start * scale;
+  let right = transition.end * scale;
+  if (right - left < TRANSITION.min) {
+    const middle = (left + right) / 2;
+    left = middle - TRANSITION.min / 2;
+    right = middle + TRANSITION.min / 2;
+  }
+  const top = INSET + STRIP + TRANSITION.gap;
+  return { left, right, top, bottom: Math.min(top + TRANSITION.height, height - INSET - TRANSITION.gap) };
 }
 
 /** Sizes a canvas for the screen density and returns a cleared context in CSS pixels. */
@@ -292,6 +309,46 @@ export class Painter {
     ctx.fillRect(a, height - 5, b - a, 3);
     ctx.fillRect(a, 2, 4, height - 2);
     ctx.fillRect(b - 4, 2, 4, height - 2);
+  }
+
+  /** A transition, like editing software shows one: a band with the diagonal of the blend. */
+  transition(ctx, transition, view, { selected, hovered }) {
+    const box = transitionBox(transition, view);
+    const x = box.left - view.scroll;
+    const w = box.right - box.left;
+    const h = box.bottom - box.top;
+    if (x > view.width || x + w < 0 || h < 6) return;
+    const { accent, text, bg } = this.colors;
+    const path = new Path2D();
+    path.roundRect(x, box.top, w, h, 4);
+    ctx.save();
+    ctx.fillStyle = rgba(bg, 0.82);
+    ctx.fill(path);
+    ctx.fillStyle = rgba(accent, selected ? 0.6 : hovered ? 0.5 : 0.36);
+    ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    ctx.strokeStyle = rgba(text, 0.85);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    // Rising into what comes in; falling at an end that fades out.
+    const falls = !transition.right;
+    ctx.moveTo(x, falls ? box.top : box.bottom);
+    ctx.lineTo(x + w, falls ? box.bottom : box.top);
+    ctx.stroke();
+    ctx.restore();
+    if (w > 34) {
+      ctx.fillStyle = rgba(bg, 0.85);
+      ctx.beginPath();
+      ctx.roundRect(x + w / 2 - 9, box.top + h / 2 - 8, 18, 16, 3);
+      ctx.fill();
+      ctx.fillStyle = text;
+      drawIcon(ctx, 'transition', x + w / 2 - 6, box.top + h / 2 - 6, 12);
+    }
+    ctx.lineWidth = selected ? 2 : 1;
+    ctx.strokeStyle = selected ? text : accent;
+    ctx.stroke(path);
+    ctx.restore();
   }
 
   line(ctx, time, { height, scale, scroll }, color, size = 1) {

@@ -2,8 +2,13 @@
 //
 // Each lane owns two media elements. While one plays, the other is already waiting at the start
 // of the next piece, so cuts play without a hitch. The picture drives the clock and the sound follows.
+// During a transition both elements play: the outgoing piece past its end and the incoming one before
+// its start, from the frames of the file around the cut. The picture is blended on screen (opacity,
+// clip, move, a black or white veil) and the sound is crossfaded at constant power.
 import { VIDEO, EPS, endOf, pieceAt, sourceAt, totalLength, volumeOf } from '/shared/pieces.mjs';
 import { audibleTracks } from '/shared/edit.mjs';
+import { transitionsOf, transitionAt, progressOf, crossfadeGains } from '/shared/transitions.mjs';
+import { clamp } from '/shared/geometry.mjs';
 
 const PRELOAD = 2; // Seconds before a piece starts.
 const REUSE = 0.06; // An element this close to the wanted time needs no seek.
@@ -16,6 +21,8 @@ const FADE = 0.006;
 const DIRECT_AUDIO = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac']);
 
 const keyOf = (piece) => `${piece.at.toFixed(4)}|${piece.from.toFixed(4)}|${piece.speed}`;
+// The style of an element outside of transitions.
+const NO_LOOK = { key: '', style: { opacity: '', transform: '', clipPath: '', zIndex: '' } };
 
 /** The two media elements of one lane. */
 class Deck {
@@ -46,22 +53,26 @@ class Deck {
     slot.target = time;
   }
 
-  /** Makes `piece` current while playing, reusing whichever element is already in place. */
-  enter(piece, time) {
+  /**
+   * Makes `piece` current while playing, reusing whichever element is already in place. During a
+   * transition (`blending`), the other element keeps playing the other piece.
+   */
+  enter(piece, time, blending = false) {
     const key = keyOf(piece);
     if (this.key === key) return;
     this.key = key;
     const wanted = sourceAt(piece, time);
     const near = (slot) => Math.abs(slot.element.currentTime - wanted) < REUSE && !slot.element.ended;
     if (!near(this.current)) {
-      this.current.element.pause();
+      if (!blending) this.current.element.pause();
       this.active = 1 - this.active;
       if (!near(this.current)) this.seek(this.current, wanted);
     }
-    this.idle.element.pause();
+    if (!blending) this.idle.element.pause();
   }
 
-  prepare(pieces, lane, piece, time) {
+  /** `leadOf(piece)` is how long before its start a piece plays, for the transition that leads to it. */
+  prepare(pieces, lane, piece, time, leadOf = () => 0) {
     const after = piece ? endOf(piece) : time;
     let next = null;
     for (const other of pieces) {
@@ -69,11 +80,43 @@ class Deck {
       if (!next || other.at < next.at) next = other;
     }
     if (!next || next.at - time > PRELOAD) return;
-    const continues = piece && Math.abs(next.at - after) < EPS && Math.abs(next.from - piece.to) < REUSE;
+    const from = Math.max(0, next.from - leadOf(next) * next.speed);
+    const continues = piece && Math.abs(next.at - after) < EPS && Math.abs(from - piece.to) < REUSE;
     const { idle } = this;
-    if (continues || idle.target === next.from || idle.element.seeking) return;
+    if (continues || idle.target === from || idle.element.seeking) return;
     idle.element.pause();
-    this.seek(idle, next.from);
+    this.seek(idle, from);
+  }
+
+  /**
+   * Keeps the idle element on `piece` at `time`, past the piece's own edges, for a transition. Where
+   * the file has nothing, it holds still on its first or last frame.
+   */
+  hold(piece, time, playing, duration) {
+    const slot = this.idle;
+    const { element } = slot;
+    const exact = sourceAt(piece, time);
+    const wanted = clamp(exact, 0, Math.max(0, duration - 0.03));
+    if (!playing || exact !== wanted) {
+      if (!element.paused) element.pause();
+      if (!element.seeking && (slot.target === null || Math.abs(slot.target - wanted) > 0.002)) this.seek(slot, wanted);
+      return;
+    }
+    let rate = piece.speed;
+    if (!element.seeking) {
+      const drift = element.currentTime - wanted;
+      if (Math.abs(drift) > SEEK_DRIFT) this.seek(slot, wanted);
+      else if (Math.abs(drift) > NUDGE_DRIFT) rate *= drift > 0 ? 0.96 : 1.04;
+    }
+    if (element.playbackRate !== rate) element.playbackRate = rate;
+    slot.target = null;
+    if (element.paused && !element.error) element.play().catch(() => {});
+  }
+
+  /** Ends the use of the idle element by a transition. */
+  stopHolding() {
+    const { element } = this.idle;
+    if (!element.paused) element.pause();
   }
 
   pause() {
@@ -134,6 +177,11 @@ export class Player {
       onError(() => { failed = false; });
     });
     this.sound = new Map();
+    // Black or white over the picture, for fades and dips.
+    this.veil = document.createElement('div');
+    this.veil.className = 'veil';
+    this.blending = false;
+    this.cache = { pieces: null, lanes: new Map() };
 
     // A hidden window gets no frames, and without frames nothing would follow the montage.
     this.onHide = () => {
@@ -148,6 +196,22 @@ export class Player {
 
   get videos() {
     return this.picture.slots.map((slot) => slot.element);
+  }
+
+  /** The transitions of a lane, worked out once per montage. */
+  transitions(pieces, lane) {
+    if (this.cache.pieces !== pieces) this.cache = { pieces, lanes: new Map() };
+    if (!this.cache.lanes.has(lane)) this.cache.lanes.set(lane, transitionsOf(pieces, lane));
+    return this.cache.lanes.get(lane);
+  }
+
+  /** How long before its start a piece plays, for the transition at its cut. */
+  leadOf(pieces, lane) {
+    const list = this.transitions(pieces, lane);
+    return (piece) => {
+      const found = list.find((transition) => transition.left && transition.right?.id === piece.id);
+      return found ? piece.at - found.start : 0;
+    };
   }
 
   get length() {
@@ -268,9 +332,13 @@ export class Player {
     // At the very end, keep showing the last frame.
     const time = !this.playing && this.time >= end - 1e-4 ? Math.max(0, end - 0.01) : this.time;
     const piece = pieceAt(pieces, VIDEO, time);
+    const transition = piece ? transitionAt(this.transitions(pieces, VIDEO), time) : null;
+    const other = transition?.left && transition.right
+      ? (piece.id === transition.left.id ? transition.right : transition.left)
+      : null;
 
     if (piece && this.playing) {
-      deck.enter(piece, time);
+      deck.enter(piece, time, Boolean(other));
       deck.setRate(piece.speed);
       deck.start();
     } else if (piece) {
@@ -284,14 +352,79 @@ export class Player {
       for (const slot of deck.slots) slot.element.pause();
       deck.key = null;
     }
-    if (this.playing) deck.prepare(pieces, VIDEO, piece, time);
+    if (other) deck.hold(other, time, this.playing, this.clip.duration);
+    else if (this.blending) deck.stopHolding();
+    this.blending = Boolean(other);
+    if (this.playing && !other) deck.prepare(pieces, VIDEO, piece, time, this.leadOf(pieces, VIDEO));
 
+    const looks = transition ? this.blend(transition, progressOf(transition, time), piece, deck) : null;
     deck.slots.forEach(({ element }, i) => {
       let shown = Boolean(piece) && i === deck.active;
+      if (looks) shown = looks.shown.includes(element);
       // Until the incoming element has a frame, keep the outgoing one on screen.
-      if (piece && this.playing && deck.current.element.seeking) shown = element.classList.contains('shown');
+      else if (piece && this.playing && deck.current.element.seeking) shown = element.classList.contains('shown');
       element.classList.toggle('shown', shown);
+      const look = looks?.styles.get(element) || NO_LOOK;
+      if (element.dataset.look !== look.key) {
+        element.dataset.look = look.key;
+        Object.assign(element.style, look.style);
+      }
     });
+    const veil = looks?.veil || { color: '#000', opacity: 0 };
+    if (this.veil.dataset.look !== `${veil.color}${veil.opacity}`) {
+      this.veil.dataset.look = `${veil.color}${veil.opacity}`;
+      this.veil.style.background = veil.color;
+      this.veil.style.opacity = String(veil.opacity);
+    }
+  }
+
+  /**
+   * How the picture looks during a transition at `progress`: which elements show, their styles, and
+   * the veil. The looks follow the xfade transitions of the export.
+   */
+  blend(transition, progress, piece, deck) {
+    const styles = new Map();
+    const look = (element, style) => styles.set(element, { key: JSON.stringify(style), style: { ...NO_LOOK.style, ...style } });
+    const colour = transition.kind === 'white' ? '#fff' : '#000';
+    const p = progress;
+    if (!transition.left || !transition.right) {
+      const element = deck.current.element;
+      look(element, {});
+      // From black at a start, to black at an end.
+      return { shown: [element], styles, veil: { color: colour, opacity: Number((transition.right ? 1 - p : p).toFixed(3)) } };
+    }
+    const mine = deck.current.element;
+    const theirs = deck.idle.element;
+    const left = piece.id === transition.left.id ? mine : theirs;
+    const right = left === mine ? theirs : mine;
+    switch (transition.kind) {
+      case 'black':
+      case 'white': {
+        const shown = p < 0.5 ? left : right;
+        look(shown, {});
+        return { shown: [shown], styles, veil: { color: colour, opacity: Number((p < 0.5 ? p * 2 : (1 - p) * 2).toFixed(3)) } };
+      }
+      case 'wipe':
+        look(left, { zIndex: '1' });
+        look(right, { zIndex: '2', clipPath: `inset(0 0 0 ${((1 - p) * 100).toFixed(2)}%)` });
+        break;
+      case 'slide':
+        look(left, { transform: `translateX(${(-p * 100).toFixed(2)}%)` });
+        look(right, { transform: `translateX(${((1 - p) * 100).toFixed(2)}%)` });
+        break;
+      case 'iris':
+        look(left, { zIndex: '1' });
+        look(right, { zIndex: '2', clipPath: `circle(${(p * 71).toFixed(2)}% at 50% 50%)` });
+        break;
+      case 'zoom':
+        look(right, { zIndex: '1' });
+        look(left, { zIndex: '2', opacity: (1 - p).toFixed(3), transform: `scale(${(1 + p * 0.6).toFixed(3)})` });
+        break;
+      default: // dissolve
+        look(left, { zIndex: '1' });
+        look(right, { zIndex: '2', opacity: p.toFixed(3) });
+    }
+    return { shown: [left, right], styles, veil: null };
   }
 
   renderSound({ pieces, tracks }) {
@@ -303,8 +436,13 @@ export class Player {
       const deck = this.deckFor(index);
       const piece = pieceAt(pieces, index, this.time);
       const live = audible[index] && piece && !piece.muted;
+      const transition = live ? transitionAt(this.transitions(pieces, index), this.time) : null;
+      const running = live && this.playing && !waiting;
+      const other = running && transition?.left && transition.right
+        ? (piece.id === transition.left.id ? transition.right : transition.left)
+        : null;
 
-      if (live && this.playing && !waiting) this.follow(deck, piece);
+      if (running) this.follow(deck, piece, Boolean(other));
       else {
         for (const slot of deck.slots) if (!slot.element.paused) slot.element.pause();
         deck.key = null;
@@ -314,19 +452,32 @@ export class Player {
           if (deck.current.target === null || Math.abs(deck.current.target - wanted) > 0.002) deck.seek(deck.current, wanted);
         }
       }
-      if (this.playing && audible[index]) deck.prepare(pieces, index, piece, this.time);
+      if (other) deck.hold(other, this.time, true, this.clip.duration);
+      else if (deck.blending) deck.stopHolding();
+      deck.blending = Boolean(other);
+      if (this.playing && audible[index] && !other) deck.prepare(pieces, index, piece, this.time, this.leadOf(pieces, index));
 
+      // Constant power across a cut; a fade from or to silence at an edge.
+      let mine = 1;
+      let theirs = 0;
+      if (transition) {
+        const [out, into] = crossfadeGains(progressOf(transition, this.time));
+        if (other) [mine, theirs] = piece.id === transition.left.id ? [out, into] : [into, out];
+        else mine = transition.right ? into : out;
+      }
       deck.slots.forEach((slot, i) => {
-        const gain = live && this.playing && i === deck.active ? track.volume * volumeOf(piece) : 0;
-        if (gain === slot.level) return;
+        let gain = 0;
+        if (running && i === deck.active) gain = track.volume * volumeOf(piece) * mine;
+        else if (other && i !== deck.active) gain = track.volume * volumeOf(other) * theirs;
+        if (Math.abs(gain - slot.level) < 1e-4) return;
         slot.level = gain;
         slot.gain.gain.setTargetAtTime(gain, this.context.currentTime, FADE);
       });
     });
   }
 
-  follow(deck, piece) {
-    deck.enter(piece, this.time);
+  follow(deck, piece, blending = false) {
+    deck.enter(piece, this.time, blending);
     const { element } = deck.current;
     const wanted = sourceAt(piece, this.time);
     if (element.duration && wanted >= element.duration - 0.03) {

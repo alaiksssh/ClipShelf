@@ -3,6 +3,7 @@
 import * as P from '/shared/pieces.mjs';
 import { zoneOf } from '/shared/edit.mjs';
 import { planReveal, reveal } from '/shared/reveal.mjs';
+import { setTransition, MIN_DURATION, MAX_DURATION } from '/shared/transitions.mjs';
 import { clamp } from '/shared/geometry.mjs';
 import * as format from './format.js';
 import { t } from './i18n.js';
@@ -191,6 +192,37 @@ export class Move extends Gesture {
     const landed = destination < start ? destination : destination - (end - start);
     editor.apply(P.rippleMove(this.base, this.span, destination));
     editor.player.seek(landed);
+  }
+}
+
+/**
+ * Drags an end of a transition: it gets longer or shorter. At a cut it stays centred on it, so both
+ * ends move; at an edge, the end on the edge stays.
+ */
+export class TransitionLength extends Gesture {
+  constructor(timeline, event, transition, edge) {
+    super(timeline, event);
+    this.transition = transition;
+    this.edge = edge;
+    this.base = this.editor.edit.pieces;
+    const owner = this.base.find((piece) => piece.id === transition.owner.id);
+    this.value = owner[transition.owner.side === 'in' ? 'transitionIn' : 'transitionOut'];
+    this.editor.player.pause();
+  }
+
+  update(time, event) {
+    const { transition } = this;
+    let length;
+    if (transition.left && transition.right) length = 2 * Math.abs(time - transition.cut);
+    else length = Math.abs(time - transition.cut);
+    length = clamp(length, MIN_DURATION, MAX_DURATION);
+    this.length = length;
+    this.editor.preview(setTransition(this.base, transition.lane, transition.cut, { ...this.value, duration: length }));
+    this.timeline.showHint(event, format.seconds(length), t('transition.dragHint'));
+  }
+
+  finish() {
+    if (this.moved) this.editor.commit();
   }
 }
 
