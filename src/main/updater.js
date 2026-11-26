@@ -64,6 +64,14 @@ function downloadShare(percent) {
   return Math.min(100, Math.max(0, Math.floor(Number(percent) || 0))) / 100;
 }
 
+/**
+ * Whether this start must give way to a running installer. The installer itself opens the new version
+ * at its very end, with --updated, while its own program still runs: that start is the one wanted.
+ */
+function startBlocked({ packaged, argv, installing = () => updateInstalling() }) {
+  return packaged && !argv.includes('--updated') && installing();
+}
+
 class Updater {
   /**
    * `onChange` is told when an update is found, ready, waited for or lost; `onProgress` gets the share
@@ -174,4 +182,4 @@ class Updater {
   }
 }
 
-module.exports = { Updater, updatesEnabled, updaterFolder, updateInstalling, downloadShare };
+module.exports = { Updater, updatesEnabled, updaterFolder, updateInstalling, startBlocked, downloadShare };

@@ -534,6 +534,7 @@ export default {
   "news.transitionsSound": "Le son se fond avec son image, et s’ouvre ou se ferme en fondu au début et à la fin.",
   "news.updateProgress": "Mises à jour : leur fenêtre s’ouvre dès qu’une nouvelle version est trouvée, avec une barre de progression du téléchargement. « Installer et redémarrer » se choisit tout de suite : ClipShelf se ferme tout seul à la fin du téléchargement.",
   "news.updateQuiet": "Une mise à jour ne rouvre plus ClipShelf d’elle-même. Fermé avec une mise à jour en attente, ClipShelf montre l’installation et reste fermé ; « Redémarrer maintenant » l’installe et le rouvre.",
+  "news.updateReopen": "« Installer et redémarrer » rouvre bien ClipShelf une fois la mise à jour installée. Avant, l’app se fermait sans se rouvrir.",
   "news.updateWindow": "Quand une nouvelle version est téléchargée, une fenêtre dit ce qu’elle apporte. « Plus tard » la garde en bas à droite, et elle s’installe toute seule à la fermeture de ClipShelf.",
   "news.updates": "ClipShelf se met maintenant à jour tout seul : une nouvelle version se télécharge en arrière-plan et s’installe à la fermeture.",
   "news.videoControls": "Le plein écran est maintenant réservé aux clips, plus à toute l’app. Sa barre a les boutons de l’éditeur : début, −5 s, lecture, +5 s, fin.",

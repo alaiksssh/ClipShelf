@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
-const { updatesEnabled, updaterFolder, updateInstalling } = require('../src/main/updater');
+const { updatesEnabled, updaterFolder, updateInstalling, startBlocked } = require('../src/main/updater');
 
 test('updates are looked for by an installed app only, never during a check', () => {
   assert.equal(updatesEnabled({ packaged: true, env: {} }), true);
@@ -141,4 +141,13 @@ test('a download that ends during an export waits for the quit', () => {
   events.emit('update-downloaded', { version: '9.9.9' });
   assert.equal(told.installs.length, 0);
   assert.equal(updater.status().ready, true);
+});
+
+test('a start during an install gives way, except the one the installer makes at its end', () => {
+  const exe = 'C:\Users\me\AppData\Local\Programs\clipshelf\ClipShelf.exe';
+  const running = () => true;
+  assert.equal(startBlocked({ packaged: true, argv: [exe], installing: running }), true, 'opened by hand meanwhile');
+  assert.equal(startBlocked({ packaged: true, argv: [exe, '--updated'], installing: running }), false, 'opened by the installer');
+  assert.equal(startBlocked({ packaged: true, argv: [exe], installing: () => false }), false, 'no install');
+  assert.equal(startBlocked({ packaged: false, argv: [exe], installing: running }), false, 'from the sources');
 });

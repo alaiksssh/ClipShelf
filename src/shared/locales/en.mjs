@@ -534,6 +534,7 @@ export default {
   "news.transitionsSound": "The sound crossfades with its picture, and fades in or out at the start and the end.",
   "news.updateProgress": "Updates: their window opens as soon as a new version is found, with a progress bar of the download. “Install and restart” can be chosen right away: ClipShelf closes by itself once the download is done.",
   "news.updateQuiet": "An update no longer reopens ClipShelf by itself. Closed with an update waiting, ClipShelf shows the install and stays closed; “Restart now” installs and reopens it.",
+  "news.updateReopen": "“Install and restart” opens ClipShelf again once the update is installed. It used to close it without reopening it.",
   "news.updateWindow": "When a new version has been downloaded, a window says what it brings. “Later” keeps it at the bottom right, and it installs by itself when ClipShelf is closed.",
   "news.updates": "ClipShelf now updates itself: a new version downloads in the background and goes in when the app is closed.",
   "news.videoControls": "Full screen is for clips only now, no longer for the whole app. Its bar has the buttons of the editor: start, −5 s, play, +5 s, end.",

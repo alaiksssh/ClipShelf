@@ -7,6 +7,7 @@ import { t } from './i18n.js';
 import { openDialog, dialogHead } from './dialogs.js';
 
 const NEWS = {
+  '1.13.6': [{ key: 'news.updateReopen', symbol: 'refresh' }],
   '1.13.5': [{ key: 'news.updateProgress', symbol: 'refresh' }],
   '1.13.4': [{ key: 'news.updateQuiet', symbol: 'refresh' }],
   '1.13.3': [
