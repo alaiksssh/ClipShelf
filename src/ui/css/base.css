@@ -918,6 +918,12 @@ dialog.welcome[open] { display: flex; flex-direction: column; }
 .status-update .status-open { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
 .status-update .status-open:hover { text-decoration: underline; }
 .update-later { margin: 16px 0 0; color: var(--dim); font-size: 12.5px; }
+.update-failed { color: var(--low); }
+.update-progress { margin-top: 16px; }
+.update-progress[hidden] { display: none; }
+.update-progress progress { margin-top: 6px; }
+.update-percent { color: var(--dim); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.status-update .status-bar { width: 80px; }
 .status-spin {
   width: 10px;
   height: 10px;

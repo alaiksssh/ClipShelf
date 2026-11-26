@@ -20,4 +20,6 @@ contextBridge.exposeInMainWorld('bridge', {
   onJobLog: (fn) => { ipcRenderer.on('jobLog', (_, text, live) => fn(text, live)); },
   // { label } when a job starts, null when it ends.
   onJob: (fn) => { ipcRenderer.on('job', (_, job) => fn(job)); },
+  // The share (0 to 1) of an update being downloaded.
+  onUpdateProgress: (fn) => { ipcRenderer.on('updateProgress', (_, share) => fn(share)); },
 });

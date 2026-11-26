@@ -137,8 +137,8 @@ function state() {
     welcome: welcome.needed,
     news: settings.data.seenVersion === app.getVersion() ? null : app.getVersion(),
     disks: freeDisks,
-    update: updater?.ready || null, // A newer version, downloaded and waiting.
-    updateNotes: updater?.ready ? updater.notes : null,
+    update: updater?.status() || null, // A newer version, being downloaded or waiting to be installed.
+    updateNotes: updater?.status() ? updater.notes : null,
   };
 }
 
@@ -596,9 +596,9 @@ function registerIpc() {
     welcome.done(t('welcome.fileText'));
     send('changed', state());
   });
-  handle('installUpdate', () => {
-    if (exportJob) throw new Error(t('main.busy'));
-    return updater.install();
+  handle('installUpdate', (want = true) => {
+    if (want && exportJob) throw new Error(t('main.busy'));
+    return updater.install(want);
   });
   handle('newsSeen', () => {
     settings.data.seenVersion = app.getVersion();
@@ -827,7 +827,13 @@ if (!app.requestSingleInstanceLock() || (app.isPackaged && updateInstalling())) 
     protocol.handle('shelf', createHandler({ library, derived, icons }));
     registerIpc();
     createWindow();
-    updater = new Updater({ app, onChange: () => publish(), busy: () => Boolean(exportJob) });
+    updater = new Updater({
+      app,
+      onChange: () => publish(),
+      // Its own channel: the whole state would be sent at every percent.
+      onProgress: (share) => send('updateProgress', share),
+      busy: () => Boolean(exportJob),
+    });
     updater.start();
     library.start().catch((error) => console.error('Initial scan failed:', error));
     // The first export would otherwise wait for the test of the AMD encoder.

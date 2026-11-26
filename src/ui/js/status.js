@@ -1,10 +1,10 @@
 // The status bar at the bottom of the window: what runs in the background (reading the clips, the
 // kills, the job of the moment with its bar), the hint of the editor tool, then the clips shown and
-// selected, a downloaded update, and the free space of the disks that hold the clips. Progress only
+// selected, an update (its download, then a link to install it), and the free space of the disks that hold the clips. Progress only
 // moves its bar.
-import { h, icon, call, toast } from './dom.js';
+import { h, icon, call } from './dom.js';
 import { t, bytes } from './i18n.js';
-import { openUpdate } from './update.js';
+import { openUpdate, installFromStatus, onUpdateShare, updateShare } from './update.js';
 
 export function createStatus(app, el) {
   const texts = { hint: '', counts: '' };
@@ -14,6 +14,14 @@ export function createStatus(app, el) {
   const bar = h('i');
   const percent = h('span', { class: 'status-percent' });
   const cancel = h('button', { class: 'status-link', onClick: () => call('cancelExport') }, t('common.cancel'));
+
+  const updateBar = h('i');
+  const updatePercent = h('span', { class: 'status-percent' });
+  const showUpdateShare = (share) => {
+    updateBar.style.width = `${Math.round(share * 100)}%`;
+    updatePercent.textContent = t('common.percent', { n: Math.round(share * 100) });
+  };
+  onUpdateShare(showUpdateShare);
 
   const busy = (text) => h('span', { class: 'status-item' }, h('i', { class: 'status-spin', 'aria-hidden': 'true' }), text);
 
@@ -29,20 +37,24 @@ export function createStatus(app, el) {
         h('span', { class: 'status-name' }, job.label), h('span', { class: 'status-bar' }, bar), percent, cancel),
       texts.hint && h('span', { class: 'status-item status-hint' }, texts.hint),
       h('span', { class: 'grow' }),
-      update && h('span', { class: 'status-item status-update' },
-        h('button', { class: 'status-open', title: t('update.openTitle'), onClick: () => openUpdate(app) }, icon('refresh'), t('update.ready', { version: update })),
+      update?.ready && h('span', { class: 'status-item status-update' },
+        h('button', { class: 'status-open', title: t('update.openTitle'), onClick: () => openUpdate(app) }, icon('refresh'), t('update.ready', { version: update.version })),
         h('button', { class: 'status-link', title: t('update.restartTitle'), onClick: restart }, t('update.restart'))),
+      update && !update.ready && !update.failed && h('span', { class: 'status-item status-update' },
+        h('button', { class: 'status-open', title: t('update.openTitle'), onClick: () => openUpdate(app) },
+          icon('refresh'), t(update.waiting ? 'update.statusWaiting' : 'update.statusDownloading', { version: update.version })),
+        h('span', { class: 'status-bar' }, updateBar), updatePercent),
       texts.counts && h('span', { class: 'status-item' }, texts.counts),
       ...disks.map((disk) => h('span', { class: `status-item ${disk.low ? 'low' : ''}`, title: disk.root },
         icon('drive'), t('status.free', { drive: disk.root.replace(/\\$/, ''), size: bytes(disk.free) }))),
     ].filter(Boolean));
     progress(job?.value || 0);
+    if (update && !update.ready) showUpdateShare(updateShare(update));
   }
 
   /** The downloaded version goes in now; otherwise it would wait for the app to be closed. */
   async function restart() {
-    const { ok, error } = await call('installUpdate');
-    if (!ok) toast(error, 'error');
+    await installFromStatus();
   }
 
   function progress(value) {
