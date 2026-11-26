@@ -5,7 +5,7 @@ const methods = [
   'addFolder', 'removeFolder', 'setExportDir', 'welcomeInfo', 'addObsFolder', 'welcomeDone', 'newsSeen', 'installUpdate', 'export', 'discord', 'cancelExport', 'revealExport',
   'overwrite', 'revert',
   'addCategory', 'renameCategory', 'removeCategory', 'addTag', 'renameTag', 'removeTag',
-  'moments', 'watching', 'setDetection', 'chooseLogo', 'automaticLogo', 'setTheme', 'setLanguage', 'showShortcuts',
+  'moments', 'watching', 'setDetection', 'chooseLogo', 'automaticLogo', 'setTheme', 'setLanguage', 'showShortcuts', 'fullScreen',
   'storage', 'compress', 'joinReplays', 'installedGames', 'pickProgram', 'addGame', 'removeGame', 'sortPreview', 'setSorting',
 ];
 
@@ -19,5 +19,7 @@ contextBridge.exposeInMainWorld('bridge', {
   onProgress: (fn) => { ipcRenderer.on('progress', (_, value, phase) => fn(value, phase)); },
   onJobLog: (fn) => { ipcRenderer.on('jobLog', (_, text, live) => fn(text, live)); },
   // { label } when a job starts, null when it ends.
+  // { full, chosen } when the window enters or leaves full screen.
+  onFullScreen: (fn) => { ipcRenderer.on('fullScreen', (_, state) => fn(state)); },
   onJob: (fn) => { ipcRenderer.on('job', (_, job) => fn(job)); },
 });

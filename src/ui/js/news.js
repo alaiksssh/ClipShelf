@@ -7,6 +7,11 @@ import { t } from './i18n.js';
 import { openDialog, dialogHead } from './dialogs.js';
 
 const NEWS = {
+  '1.13.2': [
+    { key: 'news.fullScreen', symbol: 'cornersOut' },
+    { key: 'news.videoFull', symbol: 'film' },
+    { key: 'news.videoSize', symbol: 'size' },
+  ],
   '1.13.1': {
     hero: 'transitions',
     items: [

@@ -16,8 +16,18 @@ import { NAME_LENGTH } from '/shared/moments.mjs';
 import { VIDEO_KINDS, DURATIONS, DEFAULT_DURATION, transitionsOf } from '/shared/transitions.mjs';
 import { categoryColor, pickCategory } from './categories.js';
 import { t } from './i18n.js';
+import { setVideoFullScreen } from './fullScreen.js';
 
 const HISTORY = 200;
+// Heights the bar above the tools can give the timeline, in pixels. Below the lowest one only the
+// ruler would show; the video always keeps the other one.
+const TIMELINE_MIN = 60;
+const STAGE_MIN = 140;
+// The video alone hides its controls once the pointer rests that long, while it plays.
+const CONTROLS_DELAY = 2500;
+// The keys the video alone answers to: playback and marks only, since the montage is out of sight.
+const VIDEO_KEYS = new Set([' ', 'arrowleft', 'arrowright', 'home', 'end', 'b', 'escape']);
+const VIDEO_CTRL_KEYS = new Set(['arrowleft', 'arrowright', 'arrowup', 'arrowdown']);
 
 const sameEdit = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const SAVE_DELAY = 500;
@@ -37,6 +47,9 @@ export class Editor {
     if (!Object.hasOwn(VIDEO_KINDS, this.transitionKind)) this.transitionKind = 'dissolve';
     this.transitionLength = remember('transitionLength', DEFAULT_DURATION);
     if (!DURATIONS.includes(this.transitionLength)) this.transitionLength = DEFAULT_DURATION;
+    // Null while the timeline keeps its own height.
+    this.timelineHeight = remember('timelineHeight', null);
+    this.videoOnly = false;
     app.subscribe(() => this.refresh());
   }
 
@@ -61,7 +74,7 @@ export class Editor {
       getEdit: () => this.edit,
       getZone: () => (this.selection?.type === 'range' ? this.selection.range : zoneOf(this.edit)),
       onFrame: (time) => this.frame(time),
-      onPlayState: (playing) => this.toolbar?.showPlaying(playing),
+      onPlayState: (playing) => this.showPlaying(playing),
       onError: (retry) => this.fallback(retry),
       onTrackError: (index) => toast(t('editor.trackError', { n: index + 1 }), 'error'),
     });
@@ -163,9 +176,27 @@ export class Editor {
       onClick: (event) => {
         if (event.target !== this.crop) this.player.toggle();
       },
-    }, this.player.videos, this.player.veil, this.crop, this.message);
+      // Two clicks also toggle playing twice, which leaves it as it was, as in video players.
+      onDblclick: (event) => {
+        if (event.target !== this.crop) this.setVideoOnly(!this.videoOnly);
+      },
+      onPointermove: () => this.wakeControls(),
+    }, this.player.videos, this.player.veil, this.crop, this.message, this.buildVideoControls());
 
-    this.root.replaceChildren(bar, this.stage, h('section', { class: 'panel' }, this.toolbar.el, this.timeline.el));
+    this.split = h('div', {
+      class: 'split',
+      role: 'separator',
+      'aria-orientation': 'horizontal',
+      title: t('editor.splitTip'),
+      onPointerdown: (event) => this.dragSplit(event),
+      onDblclick: () => {
+        this.setTimelineHeight(null);
+        store('timelineHeight', null);
+      },
+    });
+    this.root.replaceChildren(bar, this.stage, this.split, h('section', { class: 'panel' }, this.toolbar.el, this.timeline.el));
+    // Not measured here, where the editor may still be hidden: the style keeps it on smaller windows.
+    if (this.timelineHeight) this.root.style.setProperty('--timeline-height', `${this.timelineHeight}px`);
     this.stageObserver = new ResizeObserver(() => this.placeCrop());
     this.stageObserver.observe(this.stage);
     this.refresh();
@@ -451,7 +482,125 @@ export class Editor {
   }
 
   showTime() {
-    this.toolbar.showTime(this.player.time, this.player.length);
+    const { time, length } = this.player;
+    this.toolbar.showTime(time, length);
+    if (!this.videoOnly) return;
+    this.videoTime.textContent = `${format.duration(time, 1)} / ${format.duration(length, 1)}`;
+    this.seekFill.style.width = `${length ? clamp(time / length, 0, 1) * 100 : 0}%`;
+  }
+
+  showPlaying(playing) {
+    this.toolbar?.showPlaying(playing);
+    if (!this.videoPlay) return;
+    this.videoPlay.replaceChildren(icon(playing ? 'pause' : 'play'));
+    this.wakeControls();
+  }
+
+  // Size of the video
+
+  /** The bar between the video and the tools gives the timeline a height, and the video the rest. */
+  dragSplit(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const { split } = this;
+    const from = event.clientY;
+    const start = this.timeline.el.getBoundingClientRect().height;
+    split.setPointerCapture(event.pointerId);
+    split.classList.add('dragging');
+    const move = (next) => this.setTimelineHeight(start + from - next.clientY);
+    // Losing the capture also ends it, so a release that another window took cannot leave it held.
+    const end = () => {
+      split.removeEventListener('pointermove', move);
+      split.removeEventListener('lostpointercapture', end);
+      split.classList.remove('dragging');
+      store('timelineHeight', this.timelineHeight);
+    };
+    split.addEventListener('pointermove', move);
+    split.addEventListener('lostpointercapture', end);
+  }
+
+  /** A height in pixels, kept within what leaves the video its least height; null for the default. */
+  setTimelineHeight(height) {
+    if (height === null || !Number.isFinite(height)) {
+      this.timelineHeight = null;
+      this.root.style.removeProperty('--timeline-height');
+      return;
+    }
+    const tools = this.toolbar.el.getBoundingClientRect().height;
+    const most = Math.max(TIMELINE_MIN, this.root.clientHeight - this.stage.offsetTop - STAGE_MIN - tools - 30);
+    this.timelineHeight = Math.round(clamp(height, TIMELINE_MIN, most));
+    this.root.style.setProperty('--timeline-height', `${this.timelineHeight}px`);
+  }
+
+  /** The video alone over the whole screen, with a few controls that hide while it plays. */
+  setVideoOnly(on) {
+    if (on === this.videoOnly) return;
+    this.videoOnly = on;
+    closeMenu();
+    this.root.classList.toggle('video-only', on);
+    document.body.classList.toggle('video-only', on);
+    setVideoFullScreen(on);
+    if (!on) return;
+    if (this.root.contains(document.activeElement)) document.activeElement.blur();
+    this.showTime();
+    this.showPlaying(this.player.playing);
+  }
+
+  buildVideoControls() {
+    this.videoPlay = button({ icon: 'play', title: t('tool.play'), class: 'ghost', onClick: () => this.player.toggle() });
+    this.videoTime = h('span', { class: 'video-time' });
+    this.seekFill = h('div', { class: 'seek-fill' });
+    const seek = h('div', { class: 'seek', onPointerdown: (event) => this.dragSeek(event) }, this.seekFill);
+    this.videoControls = h('div', {
+      class: 'video-controls',
+      // The stage under them plays, pauses and leaves on clicks.
+      onClick: (event) => event.stopPropagation(),
+      onDblclick: (event) => event.stopPropagation(),
+    },
+    this.videoPlay,
+    this.videoTime,
+    seek,
+    button({ icon: 'cornersIn', title: t('editor.videoLeave'), class: 'ghost', onClick: () => this.setVideoOnly(false) }));
+    this.enlarge = button({
+      icon: 'cornersOut',
+      title: t('editor.videoFull'),
+      class: 'stage-full',
+      onClick: (event) => {
+        event.stopPropagation();
+        this.setVideoOnly(true);
+      },
+      onDblclick: (event) => event.stopPropagation(),
+    });
+    return [this.enlarge, this.videoControls];
+  }
+
+  dragSeek(event) {
+    if (event.button !== 0) return;
+    const bar = event.currentTarget;
+    const go = (at) => {
+      const { left, width } = bar.getBoundingClientRect();
+      this.player.seek(clamp((at.clientX - left) / width, 0, 1) * this.player.length);
+      this.timeline.reveal(this.player.time);
+    };
+    bar.setPointerCapture(event.pointerId);
+    go(event);
+    const end = () => {
+      bar.removeEventListener('pointermove', go);
+      bar.removeEventListener('lostpointercapture', end);
+    };
+    bar.addEventListener('pointermove', go);
+    bar.addEventListener('lostpointercapture', end);
+  }
+
+  /** Shows the controls of the video alone, and hides them later if it plays. */
+  wakeControls() {
+    if (!this.videoOnly) return;
+    this.stage.classList.add('awake');
+    clearTimeout(this.sleepTimer);
+    this.sleepTimer = setTimeout(() => {
+      if (this.player.playing && !this.videoControls.matches(':hover')) this.stage.classList.remove('awake');
+      else this.wakeControls();
+    }, CONTROLS_DELAY);
   }
 
   frame(time) {
@@ -772,6 +921,20 @@ export class Editor {
     }
     const key = event.key.toLowerCase();
     const { player, commands, timeline } = this;
+    if (event.altKey && key === 'enter') {
+      event.preventDefault();
+      this.setVideoOnly(!this.videoOnly);
+      return;
+    }
+    if (this.videoOnly) {
+      if (!(event.ctrlKey ? VIDEO_CTRL_KEYS : VIDEO_KEYS).has(key)) return;
+      this.wakeControls();
+      if (key === 'escape') {
+        event.preventDefault();
+        this.setVideoOnly(false);
+        return;
+      }
+    }
     // Any other shortcut during a drag would edit under the pointer.
     if (timeline.gesture && key !== 'escape') {
       event.preventDefault();
@@ -837,6 +1000,8 @@ export class Editor {
 
   teardown() {
     if (!this.clip) return;
+    this.setVideoOnly(false);
+    clearTimeout(this.sleepTimer);
     closeMenu();
     // Applies what was being typed, while the clip is still there to receive it.
     if (this.root.contains(document.activeElement)) document.activeElement.blur();

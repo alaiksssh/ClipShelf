@@ -3,7 +3,27 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { placeWindow } = require('../src/main/windowState');
+const { placeWindow, windowState } = require('../src/main/windowState');
+
+const fakeWindow = ({ maximized = false, fullScreen = false } = {}) => ({
+  getNormalBounds: () => ({ x: 10, y: 20, width: 1200, height: 800 }),
+  isMaximized: () => maximized,
+  isFullScreen: () => fullScreen,
+});
+
+test('a window keeps its place, whether it was maximized, and the full screen chosen', () => {
+  assert.deepEqual(windowState(fakeWindow({ maximized: true })),
+    { x: 10, y: 20, width: 1200, height: 800, maximized: true, fullScreen: false });
+  assert.equal(windowState(fakeWindow(), { fullScreen: true }).fullScreen, true);
+});
+
+test('a window closed in full screen keeps whether it was maximized before', () => {
+  // Windows reports a window in full screen as not maximized.
+  assert.equal(windowState(fakeWindow({ fullScreen: true }), { fullScreen: true, maximizedBefore: true }).maximized, true);
+  assert.equal(windowState(fakeWindow({ fullScreen: true }), { maximizedBefore: false }).maximized, false);
+  // Out of full screen, what the window says counts, whatever was kept before.
+  assert.equal(windowState(fakeWindow({ maximized: false }), { maximizedBefore: true }).maximized, false);
+});
 
 const MIN = { width: 980, height: 640 };
 const primary = { x: 0, y: 0, width: 1920, height: 1040 };

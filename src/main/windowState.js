@@ -1,9 +1,14 @@
-// The main window opens again where it was closed, with its size and whether it was maximized.
+// The main window opens again where it was closed, with its size, whether it was maximized and
+// whether the user chose full screen.
 
-/** What to keep of a window: its size and place when not maximized, and whether it was. */
-function windowState(win) {
+/**
+ * What to keep of a window: its size and place when not maximized, whether it was, and whether
+ * full screen was chosen. A window in full screen is not maximized: what it was before counts.
+ */
+function windowState(win, { fullScreen = false, maximizedBefore = false } = {}) {
   const { x, y, width, height } = win.getNormalBounds();
-  return { x, y, width, height, maximized: win.isMaximized() };
+  const maximized = win.isFullScreen() ? maximizedBefore : win.isMaximized();
+  return { x, y, width, height, maximized, fullScreen };
 }
 
 /**

@@ -1,7 +1,7 @@
 #editor {
   --head: 236px; /* Keep in sync with HEAD in timeline.js. */
   display: grid;
-  grid-template: var(--bar) minmax(110px, 1fr) auto / minmax(0, 1fr);
+  grid-template: var(--bar) minmax(110px, 1fr) 8px auto / minmax(0, 1fr);
 }
 
 .editor-bar {
@@ -81,10 +81,110 @@
   background: #0d0f14d9;
 }
 
+/* Between the video and the tools: dragged, it gives the timeline its height and the video the rest. */
+.split {
+  position: relative;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.split::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 44px;
+  height: 2px;
+  margin-left: -22px;
+  border-radius: 1px;
+  background: var(--border);
+  transition: background 120ms, width 120ms, margin 120ms;
+}
+
+.split:hover::after,
+.split.dragging::after {
+  width: 88px;
+  margin-left: -44px;
+  background: var(--accent);
+}
+
+/* Over the video, to show it alone over the whole screen. */
+.stage .stage-full {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 10px;
+  padding: 0 9px;
+  border-color: #ffffff26;
+  background: #0d0f14b3;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.stage:hover .stage-full,
+.stage .stage-full:focus-visible { opacity: 0.85; }
+.stage .stage-full:hover { opacity: 1; background: #0d0f14e6; }
+
+.video-controls { display: none; }
+
+/* The video alone: no bar, tools or timeline, and its controls hide while it plays. */
+#editor.video-only { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+#editor.video-only > :not(.stage),
+#editor.video-only .stage-full { display: none; }
+#editor.video-only .stage { margin: 0; border: 0; border-radius: 0; }
+#editor.video-only .stage:not(.awake) { cursor: none; }
+
+#editor.video-only .video-controls {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 18px 14px;
+  background: linear-gradient(transparent, #000000b3);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 200ms;
+  cursor: default;
+}
+
+#editor.video-only .stage.awake .video-controls { opacity: 1; }
+.video-controls .btn.ghost { color: #fff; }
+.video-controls .btn.ghost:hover:not(:disabled) { background: #ffffff26; }
+.video-time { flex: none; font-variant-numeric: tabular-nums; }
+
+.seek {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.seek::before,
+.seek-fill {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.seek::before { right: 0; background: #ffffff40; }
+.seek-fill { background: var(--accent); pointer-events: none; }
+
+body.video-only #status { display: none; }
+body.video-only #editor { height: 100%; }
+
 /* Tools and timeline share one card. */
 .panel {
   min-width: 0;
-  margin: 8px;
+  margin: 0 8px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
@@ -236,7 +336,8 @@
 /* Timeline: lanes are painted on canvases as wide as the view. */
 .timeline {
   position: relative;
-  max-height: 43vh;
+  /* Set from the bar above the tools, never so high that the video would vanish on a smaller window. */
+  max-height: min(var(--timeline-height, 43vh), calc(100vh - 300px));
   background: var(--bg);
   overflow: auto;
   /* Always room for the scroll bar, or the lanes would move under the pointer as a montage grows. */

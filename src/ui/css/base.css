@@ -19,6 +19,16 @@ body {
 
 [hidden] { display: none !important; }
 
+/* Full screen hides the native window buttons: this one takes their place, to leave it. */
+body.full-screen { --controls: 52px; }
+
+.leave-full-screen {
+  position: fixed;
+  z-index: 40;
+  top: 10px;
+  right: 10px;
+}
+
 button,
 input {
   color: inherit;

@@ -8,6 +8,7 @@ import { installTooltips } from './tooltip.js';
 import { createStatus } from './status.js';
 import { openPalette } from './palette.js';
 import { openNews } from './news.js';
+import { installFullScreen, toggleFullScreen } from './fullScreen.js';
 
 const listeners = new Set();
 
@@ -53,6 +54,7 @@ function receive(state) {
 }
 
 installTooltips();
+installFullScreen();
 window.bridge.onChanged(receive);
 const initial = await call('state');
 if (initial.ok) receive(initial.value);
@@ -61,6 +63,13 @@ if (initial.ok && initial.value.welcome) openWelcome(app);
 else if (initial.ok && initial.value.news) openNews(initial.value.news);
 
 addEventListener('keydown', (event) => {
+  // F11 works everywhere, even over a dialog. Over the video alone, it leaves it.
+  if (event.key === 'F11' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+    event.preventDefault();
+    if (editor.videoOnly) editor.setVideoOnly(false);
+    else toggleFullScreen();
+    return;
+  }
   if (document.querySelector('dialog[open], .menu')) return;
   if (event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
     event.preventDefault();
