@@ -37,8 +37,7 @@ export const SHORTCUTS = [
     [t('key.escape'), t('sc.escape')],
   ]],
   [t('sc.view'), [
-    ['F11', t('sc.fullScreen')],
-    [`Alt + ${t('key.enter')}`, t('sc.videoFull')],
+    [`F11 / Alt + ${t('key.enter')}`, t('sc.videoFull')],
     [t('sc.resizeVideoKey'), t('sc.resizeVideo')],
     [t('key.ctrlWheel'), t('sc.zoomTimeline')],
     ['+ / −', t('sc.zoom')],

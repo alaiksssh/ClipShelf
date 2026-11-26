@@ -25,7 +25,7 @@ const SHORTCUTS = [
     [t('key.space'), t('sc.playPause')],
     ['← →', t('sc.frames')],
     ['Ctrl + ← →', t('sc.skip')],
-    ['F11', t('sc.fullScreen')],
+    ['F11', t('sc.videoFull')],
     ['I / O', t('sc.zone')],
     ['S', t('sc.split')],
     ['B', t('sc.mark')],

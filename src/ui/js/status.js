@@ -4,6 +4,7 @@
 // moves its bar.
 import { h, icon, call, toast } from './dom.js';
 import { t, bytes } from './i18n.js';
+import { openUpdate } from './update.js';
 
 export function createStatus(app, el) {
   const texts = { hint: '', counts: '' };
@@ -28,7 +29,8 @@ export function createStatus(app, el) {
         h('span', { class: 'status-name' }, job.label), h('span', { class: 'status-bar' }, bar), percent, cancel),
       texts.hint && h('span', { class: 'status-item status-hint' }, texts.hint),
       h('span', { class: 'grow' }),
-      update && h('span', { class: 'status-item status-update' }, icon('refresh'), t('update.ready', { version: update }),
+      update && h('span', { class: 'status-item status-update' },
+        h('button', { class: 'status-open', title: t('update.openTitle'), onClick: () => openUpdate(app) }, icon('refresh'), t('update.ready', { version: update })),
         h('button', { class: 'status-link', title: t('update.restartTitle'), onClick: restart }, t('update.restart'))),
       texts.counts && h('span', { class: 'status-item' }, texts.counts),
       ...disks.map((disk) => h('span', { class: `status-item ${disk.low ? 'low' : ''}`, title: disk.root },

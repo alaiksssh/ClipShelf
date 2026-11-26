@@ -19,7 +19,5 @@ contextBridge.exposeInMainWorld('bridge', {
   onProgress: (fn) => { ipcRenderer.on('progress', (_, value, phase) => fn(value, phase)); },
   onJobLog: (fn) => { ipcRenderer.on('jobLog', (_, text, live) => fn(text, live)); },
   // { label } when a job starts, null when it ends.
-  // { full, chosen } when the window enters or leaves full screen.
-  onFullScreen: (fn) => { ipcRenderer.on('fullScreen', (_, state) => fn(state)); },
   onJob: (fn) => { ipcRenderer.on('job', (_, job) => fn(job)); },
 });

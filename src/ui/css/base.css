@@ -19,16 +19,6 @@ body {
 
 [hidden] { display: none !important; }
 
-/* Full screen hides the native window buttons: this one takes their place, to leave it. */
-body.full-screen { --controls: 52px; }
-
-.leave-full-screen {
-  position: fixed;
-  z-index: 40;
-  top: 10px;
-  right: 10px;
-}
-
 button,
 input {
   color: inherit;
@@ -925,6 +915,9 @@ dialog.welcome[open] { display: flex; flex-direction: column; }
 .status-link:hover { color: var(--accent); }
 .status-update { color: var(--accent); }
 .status-update .status-link { margin-left: 4px; text-decoration: underline; }
+.status-update .status-open { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.status-update .status-open:hover { text-decoration: underline; }
+.update-later { margin: 16px 0 0; color: var(--dim); font-size: 12.5px; }
 .status-spin {
   width: 10px;
   height: 10px;

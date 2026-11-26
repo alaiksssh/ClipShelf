@@ -8,7 +8,7 @@ import { installTooltips } from './tooltip.js';
 import { createStatus } from './status.js';
 import { openPalette } from './palette.js';
 import { openNews } from './news.js';
-import { installFullScreen, toggleFullScreen } from './fullScreen.js';
+import { announceUpdate } from './update.js';
 
 const listeners = new Set();
 
@@ -51,10 +51,10 @@ function receive(state) {
   if (state.theme !== app.state.theme) applyTheme(state.theme);
   app.state = state;
   for (const listener of [...listeners]) listener();
+  announceUpdate(app);
 }
 
 installTooltips();
-installFullScreen();
 window.bridge.onChanged(receive);
 const initial = await call('state');
 if (initial.ok) receive(initial.value);
@@ -63,11 +63,10 @@ if (initial.ok && initial.value.welcome) openWelcome(app);
 else if (initial.ok && initial.value.news) openNews(initial.value.news);
 
 addEventListener('keydown', (event) => {
-  // F11 works everywhere, even over a dialog. Over the video alone, it leaves it.
+  // F11 shows the clip open in the editor alone over the screen, or leaves it. Only clips go full screen.
   if (event.key === 'F11' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
     event.preventDefault();
-    if (editor.videoOnly) editor.setVideoOnly(false);
-    else toggleFullScreen();
+    if (editor.clip && !document.querySelector('dialog[open]')) editor.setVideoOnly(!editor.videoOnly);
     return;
   }
   if (document.querySelector('dialog[open], .menu')) return;

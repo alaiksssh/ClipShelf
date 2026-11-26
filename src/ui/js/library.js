@@ -81,7 +81,8 @@ export class Library {
     this.visible = [];
     // Grid of cards or list of rows, and the info panel on the right: kept for the next start.
     this.layout = remember('layout', 'grid') === 'list' ? 'list' : 'grid';
-    this.infoOpen = Boolean(remember('infoOpen', false));
+    // Open by default. A new key, so that it opens once for those who had it closed before 1.13.3.
+    this.infoOpen = Boolean(remember('infoPanel', true));
     this.anchor = null;
     // Where the pointer is, so that a menu opened from the keyboard appears there.
     this.pointer = null;
@@ -190,6 +191,8 @@ export class Library {
       },
     });
     this.info = h('aside', { class: 'info-panel', hidden: !this.infoOpen, 'aria-label': t('info.title') });
+    // A tab at the edge of the panel folds it away, and brings it back from the edge of the window.
+    this.infoTab = h('button', { class: 'side-tab', onClick: () => this.toggleInfo() }, icon('next'));
     this.sizeSlider = size;
     this.layoutButtons = {
       grid: button({ icon: 'grid', title: t('lib.gridView'), class: 'ghost', onClick: () => this.setLayout('grid') }),
@@ -220,7 +223,7 @@ export class Library {
           size,
           h('div', { class: 'segmented' }, this.layoutButtons.grid, this.layoutButtons.list),
           this.infoButton),
-        h('div', { class: 'main-body' }, this.content, this.info)),
+        h('div', { class: 'main-body' }, this.content, this.infoTab, this.info)),
       this.bar,
     );
     this.paintLayout();
@@ -251,7 +254,7 @@ export class Library {
 
   toggleInfo() {
     this.infoOpen = !this.infoOpen;
-    store('infoOpen', this.infoOpen);
+    store('infoPanel', this.infoOpen);
     this.info.hidden = !this.infoOpen;
     this.paintLayout();
     this.renderInfo();
@@ -262,6 +265,8 @@ export class Library {
     this.sizeSlider.hidden = this.layout === 'list';
     for (const [id, el] of Object.entries(this.layoutButtons)) el.classList.toggle('active', id === this.layout);
     this.infoButton.classList.toggle('active', this.infoOpen);
+    this.infoTab.classList.toggle('open', this.infoOpen);
+    this.infoTab.dataset.tip = t(this.infoOpen ? 'info.fold' : 'info.unfold');
   }
 
   /** Read only while the panel is open: closed, it costs nothing. */

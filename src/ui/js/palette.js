@@ -11,7 +11,6 @@ import { openStorage } from './storage.js';
 import { openAddGame } from './addGame.js';
 import { openDuplicates } from './duplicates.js';
 import { openNews } from './news.js';
-import { isFullScreen, toggleFullScreen } from './fullScreen.js';
 
 function itemsOf(app) {
   const { library, editor } = app;
@@ -27,14 +26,13 @@ function itemsOf(app) {
     command('discord', t('discord.export'), () => editor.discord()),
     command('save', t('overwrite.go'), () => editor.overwrite(), 'Ctrl+S'),
     command('back', t('palette.backToClips'), () => app.closeClip(), t('key.escape')),
-    command('cornersOut', t('palette.videoFull'), () => editor.setVideoOnly(true), `Alt+${t('key.enter')}`),
+    command('cornersOut', t('palette.videoFull'), () => editor.setVideoOnly(true), 'F11'),
   ];
   const gameNames = [...new Map([...clips.map((clip) => clip.game), ...games.map((game) => game.name)]
     .filter(Boolean).map((name) => [name.toLowerCase(), name])).values()];
   const tagNames = [...new Set([...tags, ...clips.flatMap((clip) => clip.tags)])];
   return [
     ...(editing || []),
-    command(isFullScreen() ? 'cornersIn' : 'cornersOut', t(isFullScreen() ? 'full.leaveLabel' : 'full.enter'), () => toggleFullScreen(), 'F11'),
     command('grid', t('lib.allClips'), inLibrary(() => library.clearFilters())),
     command('heart', t('lib.favorites'), inLibrary(() => library.showView('favorites'))),
     command('list', t('lib.listView'), inLibrary(() => library.setLayout('list'))),

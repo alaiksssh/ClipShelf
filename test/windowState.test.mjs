@@ -11,15 +11,14 @@ const fakeWindow = ({ maximized = false, fullScreen = false } = {}) => ({
   isFullScreen: () => fullScreen,
 });
 
-test('a window keeps its place, whether it was maximized, and the full screen chosen', () => {
+test('a window keeps its place and whether it was maximized', () => {
   assert.deepEqual(windowState(fakeWindow({ maximized: true })),
-    { x: 10, y: 20, width: 1200, height: 800, maximized: true, fullScreen: false });
-  assert.equal(windowState(fakeWindow(), { fullScreen: true }).fullScreen, true);
+    { x: 10, y: 20, width: 1200, height: 800, maximized: true });
 });
 
 test('a window closed in full screen keeps whether it was maximized before', () => {
   // Windows reports a window in full screen as not maximized.
-  assert.equal(windowState(fakeWindow({ fullScreen: true }), { fullScreen: true, maximizedBefore: true }).maximized, true);
+  assert.equal(windowState(fakeWindow({ fullScreen: true }), { maximizedBefore: true }).maximized, true);
   assert.equal(windowState(fakeWindow({ fullScreen: true }), { maximizedBefore: false }).maximized, false);
   // Out of full screen, what the window says counts, whatever was kept before.
   assert.equal(windowState(fakeWindow({ maximized: false }), { maximizedBefore: true }).maximized, false);

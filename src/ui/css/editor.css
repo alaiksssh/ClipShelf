@@ -126,7 +126,9 @@
 .stage .stage-full:focus-visible { opacity: 0.85; }
 .stage .stage-full:hover { opacity: 1; background: #0d0f14e6; }
 
-.video-controls { display: none; }
+.video-controls,
+.video-details,
+.drawer-tab { display: none; }
 
 /* The video alone: no bar, tools or timeline, and its controls hide while it plays. */
 #editor.video-only { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
@@ -141,11 +143,12 @@
   right: 0;
   bottom: 0;
   left: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 36px 18px 14px;
-  background: linear-gradient(transparent, #000000b3);
+  column-gap: 14px;
+  padding: 44px 18px 12px;
+  background: linear-gradient(transparent, #000000c4);
   color: #fff;
   opacity: 0;
   transition: opacity 200ms;
@@ -153,14 +156,32 @@
 }
 
 #editor.video-only .stage.awake .video-controls { opacity: 1; }
+#editor.video-only .stage:not(.awake) .video-controls { pointer-events: none; }
 .video-controls .btn.ghost { color: #fff; }
 .video-controls .btn.ghost:hover:not(:disabled) { background: #ffffff26; }
-.video-time { flex: none; font-variant-numeric: tabular-nums; }
+.video-transport { display: flex; align-items: center; gap: 2px; grid-row: 2; grid-column: 1; }
+.video-transport .skip { flex-direction: column; gap: 1px; height: 40px; padding: 0 8px; font-size: 10.5px; line-height: 1; }
+.video-transport .skip .icon { width: 15px; height: 15px; }
+.video-transport .skip small { opacity: 0.8; font-variant-numeric: tabular-nums; }
+.video-transport .play {
+  width: 40px;
+  height: 40px;
+  margin: 0 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.video-transport .play .icon { width: 18px; height: 18px; }
+.video-time { grid-row: 2; grid-column: 2; font-size: 13px; font-variant-numeric: tabular-nums; }
+.video-controls > .btn { grid-row: 2; grid-column: 4; }
 
 .seek {
   position: relative;
-  flex: 1;
-  height: 16px;
+  grid-row: 2;
+  grid-column: 3;
+  height: 20px;
   cursor: pointer;
   touch-action: none;
 }
@@ -169,7 +190,7 @@
 .seek-fill {
   content: '';
   position: absolute;
-  top: 6px;
+  top: 8px;
   left: 0;
   height: 4px;
   border-radius: 2px;
@@ -177,6 +198,135 @@
 
 .seek::before { right: 0; background: #ffffff40; }
 .seek-fill { background: var(--accent); pointer-events: none; }
+.seek:hover::before, .seek:hover .seek-fill { top: 7px; height: 6px; border-radius: 3px; }
+.seek-ticks { position: absolute; inset: 0; pointer-events: none; }
+
+/* Where kills, deaths and marks are, on the bar, even with their row closed. */
+.seek-tick {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  width: 3px;
+  height: 8px;
+  margin-left: -1.5px;
+  border-radius: 1.5px;
+  background: var(--tint);
+}
+
+/* Kills, deaths and marks, above the bar at their times. */
+.video-moments {
+  position: relative;
+  display: none;
+  grid-row: 1;
+  grid-column: 3;
+  height: 34px;
+  margin-bottom: 4px;
+}
+
+.stage.moments-open .video-moments { display: block; }
+
+.video-moment {
+  position: absolute;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--tint) 60%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tint) 22%, #0d0f14d9);
+  color: var(--tint);
+  cursor: pointer;
+  transition: transform 120ms;
+}
+
+.video-moment:hover { z-index: 1; transform: scale(1.15); }
+.video-moment .icon { width: 15px; height: 15px; }
+.video-moments-empty { margin: 8px 0 0; color: #ffffffb3; font-size: 12.5px; text-align: center; }
+
+/* The arrows of the edges: a pointer resting near an edge brings its arrow, which opens a drawer. */
+#editor.video-only .drawer-tab {
+  position: absolute;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #ffffff2e;
+  background: #0d0f14a6;
+  color: #fff;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 22px #00000066;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 180ms, transform 180ms, background 120ms, color 120ms;
+}
+
+#editor.video-only .drawer-tab:hover { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.drawer-tab .icon { width: 16px; height: 16px; transition: transform 200ms; }
+
+.drawer-tab.bottom {
+  top: 4px;
+  left: 50%;
+  width: 56px;
+  height: 24px;
+  margin-left: -28px;
+  border-radius: 12px;
+  transform: translateY(6px);
+}
+
+.drawer-tab.bottom .icon { transform: rotate(180deg); }
+.stage.moments-open .drawer-tab.bottom .icon { transform: none; }
+
+.drawer-tab.right {
+  top: 50%;
+  right: 10px;
+  width: 26px;
+  height: 64px;
+  margin-top: -32px;
+  border-radius: 13px;
+  transform: translateX(6px);
+}
+
+.stage.details-open .drawer-tab.right { right: 330px; }
+.stage.details-open .drawer-tab.right .icon { transform: rotate(180deg); }
+
+#editor.video-only .stage.awake.near-bottom .drawer-tab.bottom,
+#editor.video-only .stage.awake.moments-open .drawer-tab.bottom,
+#editor.video-only .stage.awake.near-right .drawer-tab.right,
+#editor.video-only .stage.awake.details-open .drawer-tab.right {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+/* The details of the clip, at the right, over the video. */
+#editor.video-only .stage.details-open .video-details {
+  position: absolute;
+  z-index: 6;
+  top: 14px;
+  bottom: 110px;
+  right: 14px;
+  display: block;
+  width: 308px;
+  margin: 0;
+  border-color: #ffffff1f;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 40px #00000080;
+  cursor: default;
+  animation: drawer-in 180ms ease-out;
+}
+
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateX(12px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-details, .drawer-tab, .drawer-tab .icon { animation: none !important; transition: none !important; }
+}
 
 body.video-only #status { display: none; }
 body.video-only #editor { height: 100%; }

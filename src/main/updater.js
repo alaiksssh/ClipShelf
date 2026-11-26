@@ -16,6 +16,7 @@ class Updater {
   constructor({ app, onChange, busy }) {
     Object.assign(this, { app, onChange, busy });
     this.ready = null; // The version waiting to be installed.
+    this.notes = null; // Its release notes, as GitHub gives them: the page shows its news.
     this.lastError = '';
   }
 
@@ -28,8 +29,9 @@ class Updater {
     autoUpdater.autoInstallOnAppQuit = true;
     // Its info lines would fill the log at every check; problems still go to it, once each.
     autoUpdater.logger = { info() {}, debug() {}, warn: (text) => this.warn(text), error: (text) => this.warn(text) };
-    autoUpdater.on('update-downloaded', ({ version }) => {
+    autoUpdater.on('update-downloaded', ({ version, releaseNotes }) => {
       this.ready = version;
+      this.notes = releaseNotes ?? null;
       this.onChange();
     });
     autoUpdater.on('error', (error) => this.warn(error));

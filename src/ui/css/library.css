@@ -681,6 +681,32 @@ body.dragging-items * { cursor: grabbing !important; user-select: none; }
 }
 /* Grid or list, and the info panel beside the clips. */
 .main-body { display: flex; flex: 1; min-height: 0; }
+
+/* The tab that folds the info panel away, or brings it back from the edge of the window. */
+.side-tab {
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 72px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--dim);
+  cursor: pointer;
+  transition: background 120ms, color 120ms, width 120ms;
+}
+
+.side-tab:hover { width: 22px; background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.side-tab .icon { width: 12px; height: 12px; transform: rotate(180deg); transition: transform 200ms; }
+.side-tab.open .icon { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .side-tab, .side-tab .icon { transition: none; }
+}
 .main-body .content { flex: 1; min-width: 0; }
 .segmented { display: flex; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-button); }
 .segmented .btn { height: 30px; }

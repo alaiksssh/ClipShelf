@@ -16,18 +16,17 @@ import { NAME_LENGTH } from '/shared/moments.mjs';
 import { VIDEO_KINDS, DURATIONS, DEFAULT_DURATION, transitionsOf } from '/shared/transitions.mjs';
 import { categoryColor, pickCategory } from './categories.js';
 import { t } from './i18n.js';
-import { setVideoFullScreen } from './fullScreen.js';
+import { VideoAlone } from './videoAlone.js';
 
 const HISTORY = 200;
 // Heights the bar above the tools can give the timeline, in pixels. Below the lowest one only the
 // ruler would show; the video always keeps the other one.
 const TIMELINE_MIN = 60;
 const STAGE_MIN = 140;
-// The video alone hides its controls once the pointer rests that long, while it plays.
-const CONTROLS_DELAY = 2500;
-// The keys the video alone answers to: playback and marks only, since the montage is out of sight.
+// The keys the video alone answers to: playback, marks and details only, since the montage is out
+// of sight.
 const VIDEO_KEYS = new Set([' ', 'arrowleft', 'arrowright', 'home', 'end', 'b', 'escape']);
-const VIDEO_CTRL_KEYS = new Set(['arrowleft', 'arrowright', 'arrowup', 'arrowdown']);
+const VIDEO_CTRL_KEYS = new Set(['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'i']);
 
 const sameEdit = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const SAVE_DELAY = 500;
@@ -81,6 +80,7 @@ export class Editor {
     this.player.setVolume(remember('volume', 1));
     this.timeline = new Timeline(this);
     this.toolbar = new Toolbar(this);
+    this.alone = new VideoAlone(this);
     this.build();
     this.root.hidden = false;
     this.timeline.resize();
@@ -180,8 +180,8 @@ export class Editor {
       onDblclick: (event) => {
         if (event.target !== this.crop) this.setVideoOnly(!this.videoOnly);
       },
-      onPointermove: () => this.wakeControls(),
-    }, this.player.videos, this.player.veil, this.crop, this.message, this.buildVideoControls());
+      onPointermove: (event) => this.alone.point(event),
+    }, this.player.videos, this.player.veil, this.crop, this.message, ...this.alone.els);
 
     this.split = h('div', {
       class: 'split',
@@ -237,6 +237,7 @@ export class Editor {
       this.toolbar.update();
     }
     this.seenMoments = moments;
+    this.alone.paint();
   }
 
   editTitle() {
@@ -472,6 +473,7 @@ export class Editor {
     this.updateSaveButton();
     this.placeCrop();
     this.showTime();
+    this.alone.paintMoments();
   }
 
   updateSaveButton() {
@@ -484,16 +486,12 @@ export class Editor {
   showTime() {
     const { time, length } = this.player;
     this.toolbar.showTime(time, length);
-    if (!this.videoOnly) return;
-    this.videoTime.textContent = `${format.duration(time, 1)} / ${format.duration(length, 1)}`;
-    this.seekFill.style.width = `${length ? clamp(time / length, 0, 1) * 100 : 0}%`;
+    this.alone?.showTime();
   }
 
   showPlaying(playing) {
     this.toolbar?.showPlaying(playing);
-    if (!this.videoPlay) return;
-    this.videoPlay.replaceChildren(icon(playing ? 'pause' : 'play'));
-    this.wakeControls();
+    this.alone?.showPlaying(playing);
   }
 
   // Size of the video
@@ -532,75 +530,20 @@ export class Editor {
     this.root.style.setProperty('--timeline-height', `${this.timelineHeight}px`);
   }
 
-  /** The video alone over the whole screen, with a few controls that hide while it plays. */
+  /** The video alone over the whole screen (videoAlone.js). Only clips go full screen, never the app. */
   setVideoOnly(on) {
     if (on === this.videoOnly) return;
     this.videoOnly = on;
     closeMenu();
     this.root.classList.toggle('video-only', on);
     document.body.classList.toggle('video-only', on);
-    setVideoFullScreen(on);
-    if (!on) return;
+    window.bridge.fullScreen(on);
+    if (!on) {
+      this.alone.leave();
+      return;
+    }
     if (this.root.contains(document.activeElement)) document.activeElement.blur();
-    this.showTime();
-    this.showPlaying(this.player.playing);
-  }
-
-  buildVideoControls() {
-    this.videoPlay = button({ icon: 'play', title: t('tool.play'), class: 'ghost', onClick: () => this.player.toggle() });
-    this.videoTime = h('span', { class: 'video-time' });
-    this.seekFill = h('div', { class: 'seek-fill' });
-    const seek = h('div', { class: 'seek', onPointerdown: (event) => this.dragSeek(event) }, this.seekFill);
-    this.videoControls = h('div', {
-      class: 'video-controls',
-      // The stage under them plays, pauses and leaves on clicks.
-      onClick: (event) => event.stopPropagation(),
-      onDblclick: (event) => event.stopPropagation(),
-    },
-    this.videoPlay,
-    this.videoTime,
-    seek,
-    button({ icon: 'cornersIn', title: t('editor.videoLeave'), class: 'ghost', onClick: () => this.setVideoOnly(false) }));
-    this.enlarge = button({
-      icon: 'cornersOut',
-      title: t('editor.videoFull'),
-      class: 'stage-full',
-      onClick: (event) => {
-        event.stopPropagation();
-        this.setVideoOnly(true);
-      },
-      onDblclick: (event) => event.stopPropagation(),
-    });
-    return [this.enlarge, this.videoControls];
-  }
-
-  dragSeek(event) {
-    if (event.button !== 0) return;
-    const bar = event.currentTarget;
-    const go = (at) => {
-      const { left, width } = bar.getBoundingClientRect();
-      this.player.seek(clamp((at.clientX - left) / width, 0, 1) * this.player.length);
-      this.timeline.reveal(this.player.time);
-    };
-    bar.setPointerCapture(event.pointerId);
-    go(event);
-    const end = () => {
-      bar.removeEventListener('pointermove', go);
-      bar.removeEventListener('lostpointercapture', end);
-    };
-    bar.addEventListener('pointermove', go);
-    bar.addEventListener('lostpointercapture', end);
-  }
-
-  /** Shows the controls of the video alone, and hides them later if it plays. */
-  wakeControls() {
-    if (!this.videoOnly) return;
-    this.stage.classList.add('awake');
-    clearTimeout(this.sleepTimer);
-    this.sleepTimer = setTimeout(() => {
-      if (this.player.playing && !this.videoControls.matches(':hover')) this.stage.classList.remove('awake');
-      else this.wakeControls();
-    }, CONTROLS_DELAY);
+    this.alone.enter();
   }
 
   frame(time) {
@@ -928,10 +871,11 @@ export class Editor {
     }
     if (this.videoOnly) {
       if (!(event.ctrlKey ? VIDEO_CTRL_KEYS : VIDEO_KEYS).has(key)) return;
-      this.wakeControls();
-      if (key === 'escape') {
+      this.alone.wake();
+      if (key === 'escape' || (event.ctrlKey && key === 'i')) {
         event.preventDefault();
-        this.setVideoOnly(false);
+        if (key === 'escape') this.setVideoOnly(false);
+        else this.alone.setDetails(!this.alone.detailsOpen);
         return;
       }
     }
@@ -1001,7 +945,6 @@ export class Editor {
   teardown() {
     if (!this.clip) return;
     this.setVideoOnly(false);
-    clearTimeout(this.sleepTimer);
     closeMenu();
     // Applies what was being typed, while the clip is still there to receive it.
     if (this.root.contains(document.activeElement)) document.activeElement.blur();

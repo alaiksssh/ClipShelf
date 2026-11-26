@@ -81,7 +81,6 @@ const THEME_BARS = {
 };
 const themeBar = () => THEME_BARS[settings?.data.theme] || THEME_BARS.periph;
 let exportJob = null;
-let fullScreenChosen = false;
 let maximizedBefore = false;
 
 const send = (channel, ...data) => {
@@ -139,6 +138,7 @@ function state() {
     news: settings.data.seenVersion === app.getVersion() ? null : app.getVersion(),
     disks: freeDisks,
     update: updater?.ready || null, // A newer version, downloaded and waiting.
+    updateNotes: updater?.ready ? updater.notes : null,
   };
 }
 
@@ -653,20 +653,12 @@ function openShortcuts() {
   shortcutsWindow.loadURL(pageUrl('shortcuts.html'));
 }
 
-/**
- * The window covers the screen when the user chose it (F11, kept for the next start) or while the
- * editor shows the video alone. The page asks for both at once, so leaving the video gives back
- * the user's choice. Without a request, it only reads the state.
- */
-function fullScreen(request) {
-  if (request) {
-    fullScreenChosen = Boolean(request.chosen);
-    const on = fullScreenChosen || Boolean(request.video);
-    // Kept before the window covers the screen, where it is no longer maximized.
-    if (on && !win.isFullScreen()) maximizedBefore = win.isMaximized();
-    if (on !== win.isFullScreen()) win.setFullScreen(on);
-  }
-  return { full: win.isFullScreen(), chosen: fullScreenChosen };
+/** The window covers the screen only while the editor shows the video alone. */
+function fullScreen(on) {
+  // Kept before the window covers the screen, where it is no longer maximized.
+  if (on && !win.isFullScreen()) maximizedBefore = win.isMaximized();
+  if (Boolean(on) !== win.isFullScreen()) win.setFullScreen(Boolean(on));
+  return win.isFullScreen();
 }
 
 function createWindow() {
@@ -703,24 +695,15 @@ function createWindow() {
   });
   win.on('unresponsive', () => log.write('WARN', 'The window stopped responding.'));
   win.on('responsive', () => log.write('INFO', 'The window responds again.'));
-  fullScreenChosen = Boolean(place && kept.fullScreen);
-  maximizedBefore = Boolean(place && kept.maximized);
   win.once('ready-to-show', () => {
     if (place && kept.maximized) win.maximize();
-    if (fullScreenChosen) win.setFullScreen(true);
     win.show();
   });
   // Kept on close, before the window is gone; the settings are written when the app quits.
   win.on('close', () => {
-    settings.data.window = windowState(win, { fullScreen: fullScreenChosen, maximizedBefore });
+    settings.data.window = windowState(win, { maximizedBefore });
     settings.save();
   });
-  // Windows may also leave full screen on its own: the user's choice goes with it.
-  win.on('leave-full-screen', () => {
-    fullScreenChosen = false;
-    send('fullScreen', fullScreen());
-  });
-  win.on('enter-full-screen', () => send('fullScreen', fullScreen()));
   win.on('closed', () => shortcutsWindow?.close());
   // Back from Discord: the file pasted there may no longer be on the clipboard.
   win.on('focus', () => discordFiles.clear().catch((error) => console.error('Cannot clear Discord files:', error.message)));

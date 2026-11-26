@@ -7,8 +7,13 @@ import { t } from './i18n.js';
 import { openDialog, dialogHead } from './dialogs.js';
 
 const NEWS = {
+  '1.13.3': [
+    { key: 'news.videoControls', symbol: 'cornersOut' },
+    { key: 'news.videoDrawers', symbol: 'crosshair' },
+    { key: 'news.infoTab', symbol: 'info' },
+    { key: 'news.updateWindow', symbol: 'refresh' },
+  ],
   '1.13.2': [
-    { key: 'news.fullScreen', symbol: 'cornersOut' },
     { key: 'news.videoFull', symbol: 'film' },
     { key: 'news.videoSize', symbol: 'size' },
   ],
