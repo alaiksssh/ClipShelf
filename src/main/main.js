@@ -25,7 +25,7 @@ const clipboardFiles = require('./clipboardFiles');
 const { DiscordFiles } = require('./discordFiles');
 const { Welcome, obsState, same } = require('./welcome');
 const { windowState, placeWindow } = require('./windowState');
-const { Updater } = require('./updater');
+const { Updater, updateInstalling } = require('./updater');
 const i18n = require('./i18n');
 const { LANGUAGES } = require('../shared/i18n.mjs');
 
@@ -710,7 +710,9 @@ function createWindow() {
   win.loadURL(pageUrl('index.html'));
 }
 
-if (!app.requestSingleInstanceLock()) {
+// While the installer of an update runs, this would be the old version, locking the files it
+// replaces before being closed by it: the app does not open at all.
+if (!app.requestSingleInstanceLock() || (app.isPackaged && updateInstalling())) {
   app.quit();
 } else {
   // Only the first instance writes, so that two processes never share the file.

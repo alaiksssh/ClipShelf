@@ -7,6 +7,7 @@ import { t } from './i18n.js';
 import { openDialog, dialogHead } from './dialogs.js';
 
 const NEWS = {
+  '1.13.4': [{ key: 'news.updateQuiet', symbol: 'refresh' }],
   '1.13.3': [
     { key: 'news.videoControls', symbol: 'cornersOut' },
     { key: 'news.videoDrawers', symbol: 'crosshair' },

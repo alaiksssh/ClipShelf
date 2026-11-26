@@ -1,7 +1,7 @@
 {
   "name": "clipshelf",
   "productName": "ClipShelf",
-  "version": "1.13.3",
+  "version": "1.13.4",
   "private": true,
   "description": "Library and editor for local clips",
   "author": "ClipShelf",
@@ -58,6 +58,7 @@
     },
     "nsis": {
       "oneClick": true,
+      "runAfterFinish": false,
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "artifactName": "ClipShelf-Setup-${version}.exe",
